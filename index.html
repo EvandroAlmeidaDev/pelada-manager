@@ -1981,25 +1981,14 @@
                 
                 // Load demo players
                 loadDemoPlayers() {
-                //Fução desativada
-                    ];
-                        
-                        this.players = demoPlayers;
-                        this.currentId = 15;
-                        this.savePlayers();
-                        
-                        // Add a demo restriction
-                        this.playerRestrictions = [
-                            { id: 1, player1: 'Carlos', player2: 'Ricardo' },
-                            { id: 2, player1: 'Eduardo', player2: 'Fernando' }
-                        ];
-                        this.saveRestrictions();
-                        
-                        this.updateStats();
-                        this.updatePlayerList();
-                        this.updateRestrictionPlayersDropdown();
-                        this.updateRestrictionsList();
+                    // Função desativada para não carregar jogadores de demonstração
+                    if (localStorage.getItem('demoPlayersLoaded') === 'true') {
+                        return;
                     }
+    
+                    localStorage.setItem('demoPlayersLoaded', 'true');
+                    return;
+                
                 },
                 
                 // Show toast notification
