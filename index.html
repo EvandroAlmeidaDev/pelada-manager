@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pelada Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        secondary: '#4B4ACB',
+                        success: '#10B981',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        light: {
+                            primary: '#FFFFFF',
+                            secondary: '#F3F4F6',
+                            tertiary: '#E5E7EB'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .slide-fade-enter-active, .slide-fade-leave-active {
+            transition: all 0.3s ease;
+        }
+        .slide-fade-enter-from, .slide-fade-leave-to {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        
+        /* Input Range Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            border-radius: 5px;
+            background: #d3d3d3;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #5D5CDE;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #5D5CDE;
+            cursor: pointer;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5);
+            border-radius: 20px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* Fix para o toggle switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #5D5CDE;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        
+        /* Corrigir posição no container */
+        .position-tag {
+            white-space: nowrap;
+            display: inline-block;
+            margin-right: 2px;
+        }
+    </style>
+</head>
+<body class="font-sans bg-light-primary text-gray-800">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Navbar -->
+        <nav class="bg-primary text-white p-4 shadow-lg">
+            <div class="container mx-auto flex items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-futbol text-2xl"></i>
+                    <h1 class="text-xl font-bold">Pelada Manager</h1>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="container mx-auto flex-grow p-4">
+            <!-- Tabs Navigation -->
+            <div class="flex flex-col sm:flex-row justify-center border-b border-gray-300 mb-6">
+                <button class="tab-button py-3 px-6 font-medium border-b-2 border-primary text-primary" data-tab="players">
+                    <i class="fas fa-users mr-2"></i>Jogadores
+                </button>
+                <button class="tab-button py-3 px-6 font-medium border-b-2 border-transparent hover:text-primary" data-tab="teams">
+                    <i class="fas fa-random mr-2"></i>Sorteio
+                </button>
+                <button class="tab-button py-3 px-6 font-medium border-b-2 border-transparent hover:text-primary" data-tab="restrictions">
+                    <i class="fas fa-ban mr-2"></i>Restrições
+                </button>
+            </div>
+
+            <!-- Players Tab -->
+            <div id="players-tab" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column: Player List -->
+                    <div class="lg:col-span-2 bg-light-secondary rounded-lg shadow-md p-4">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold mb-2 md:mb-0">Lista de Jogadores</h2>
+                            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                <div class="relative">
+                                    <input 
+                                        type="text" 
+                                        id="player-search" 
+                                        placeholder="Buscar jogador..." 
+                                        class="pl-10 pr-4 py-2 rounded-lg bg-white border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Player Stats -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <div class="bg-white p-3 rounded-lg shadow">
+                                <p class="text-gray-500 text-sm">Total</p>
+                                <p class="text-2xl font-bold" id="total-players">0</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg shadow">
+                                <p class="text-gray-500 text-sm">Disponíveis</p>
+                                <p class="text-2xl font-bold" id="available-players">0</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg shadow">
+                                <p class="text-gray-500 text-sm">Por Posição</p>
+                                <div class="flex flex-wrap gap-1 text-sm mt-1">
+                                    <span class="position-tag bg-red-100 text-red-800 px-2 rounded">
+                                        ZAG: <span id="zag-count">0</span>
+                                    </span>
+                                    <span class="position-tag bg-green-100 text-green-800 px-2 rounded">
+                                        MEI: <span id="mei-count">0</span>
+                                    </span>
+                                    <span class="position-tag bg-blue-100 text-blue-800 px-2 rounded">
+                                        ATA: <span id="ata-count">0</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg shadow">
+                                <p class="text-gray-500 text-sm">Média Técnica</p>
+                                <p class="text-2xl font-bold" id="avg-level">0.0</p>
+                            </div>
+                        </div>
+
+                        <!-- Player Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+                                <thead class="bg-gray-100 border-b">
+                                    <tr>
+                                        <th class="py-3 px-4 text-left">Nome</th>
+                                        <th class="py-3 px-4 text-left">Posição</th>
+                                        <th class="py-3 px-4 text-left">Nível</th>
+                                        <th class="py-3 px-4 text-left">Disponível</th>
+                                        <th class="py-3 px-4 text-left">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="player-table-body">
+                                    <!-- Players will be added here -->
+                                    <tr>
+                                        <td colspan="5" class="py-4 px-4 text-center text-gray-500">
+                                            Nenhum jogador cadastrado.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Add/Edit Player Form -->
+                    <div class="bg-light-secondary rounded-lg shadow-md p-4">
+                        <h2 class="text-xl font-bold mb-4" id="form-title">Adicionar Jogador</h2>
+                        <form id="player-form" class="space-y-4">
+                            <input type="hidden" id="player-id" value="">
+
+                            <div>
+                                <label for="player-name" class="block mb-1 font-medium">Nome *</label>
+                                <input 
+                                    type="text" 
+                                    id="player-name" 
+                                    required 
+                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                    placeholder="Nome do jogador"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="player-position" class="block mb-1 font-medium">Posição *</label>
+                                <select 
+                                    id="player-position" 
+                                    required 
+                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                    <option value="">Selecione a posição</option>
+                                    <option value="ZAG">Zagueiro (ZAG)</option>
+                                    <option value="MEI">Meio-campo (MEI)</option>
+                                    <option value="ATA">Atacante (ATA)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="player-level" class="block mb-1 font-medium">
+                                    Nível Técnico: <span id="level-value">3.0</span>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    id="player-level" 
+                                    min="0.5" 
+                                    max="5.0" 
+                                    step="0.5" 
+                                    value="3.0" 
+                                    class="w-full"
+                                >
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>0.5</span>
+                                    <span>5.0</span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input 
+                                    type="checkbox" 
+                                    id="player-available" 
+                                    checked 
+                                    class="w-5 h-5 text-primary"
+                                >
+                                <label for="player-available" class="ml-2 font-medium">
+                                    Disponível para sorteio
+                                </label>
+                            </div>
+
+                            <div class="flex items-center space-x-3">
+                                <input 
+                                    type="checkbox" 
+                                    id="player-star" 
+                                    class="w-5 h-5 text-primary"
+                                >
+                                <label for="player-star" class="font-medium">
+                                    Cabeça de Chave
+                                </label>
+                            </div>
+
+                            <div class="flex items-center space-x-3">
+                                <input 
+                                    type="checkbox" 
+                                    id="player-weak" 
+                                    class="w-5 h-5 text-primary"
+                                >
+                                <label for="player-weak" class="font-medium">
+                                    Pereba do Dia
+                                </label>
+                            </div>
+
+                            <div class="flex space-x-2">
+                                <button 
+                                    type="submit" 
+                                    class="px-4 py-2 bg-primary hover:bg-secondary text-white font-medium rounded-lg transition-colors w-full"
+                                >
+                                    <i class="fas fa-save mr-2"></i>Salvar
+                                </button>
+                                <button 
+                                    type="button" 
+                                    id="cancel-button" 
+                                    class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors w-full hidden"
+                                >
+                                    <i class="fas fa-times mr-2"></i>Cancelar
+                                </button>
+                            </div>
+                        </form>
+
+                        <hr class="my-6 border-gray-300">
+
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-lg">Ações Rápidas</h3>
+                            <div class="flex flex-col space-y-2">
+                                <button 
+                                    id="toggle-all-btn" 
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    <i class="fas fa-toggle-on mr-2"></i>Todos Disponíveis
+                                </button>
+                                <button 
+                                    id="reset-stars-btn" 
+                                    class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    <i class="fas fa-star mr-2"></i>Resetar Cabeças/Perebas
+                                </button>
+                                <button 
+                                    id="clear-all-btn" 
+                                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    <i class="fas fa-trash-alt mr-2"></i>Limpar Todos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Restrictions Tab -->
+            <div id="restrictions-tab" class="tab-content hidden">
+                <div class="bg-light-secondary rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4">Restrições de Jogadores</h2>
+                    <p class="text-gray-600 mb-6">
+                        Adicione restrições para jogadores que não podem jogar no mesmo time. Estes jogadores nunca serão sorteados para o mesmo time.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Left: Add New Restriction -->
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <h3 class="font-bold text-lg mb-4">Adicionar Nova Restrição</h3>
+                            <form id="restriction-form" class="space-y-4">
+                                <div>
+                                    <label class="block mb-1 font-medium">Jogador 1</label>
+                                    <select id="restriction-player1" class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary">
+                                        <option value="">Selecione um jogador</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block mb-1 font-medium">Jogador 2</label>
+                                    <select id="restriction-player2" class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary">
+                                        <option value="">Selecione um jogador</option>
+                                    </select>
+                                </div>
+                                
+                                <button 
+                                    type="submit" 
+                                    class="px-4 py-2 bg-primary hover:bg-secondary text-white font-medium rounded-lg transition-colors w-full"
+                                >
+                                    <i class="fas fa-plus mr-2"></i>Adicionar Restrição
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Right: Current Restrictions -->
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <h3 class="font-bold text-lg mb-4">Restrições Atuais</h3>
+                            <div id="no-restrictions" class="text-center py-6 text-gray-500">
+                                <i class="fas fa-ban text-gray-300 text-4xl mb-3"></i>
+                                <p>Nenhuma restrição cadastrada.</p>
+                            </div>
+                            <ul id="restrictions-list" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                <!-- Restrictions will be added here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teams Tab -->
+            <div id="teams-tab" class="tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column: Configuration -->
+                    <div class="lg:col-span-1 bg-light-secondary rounded-lg shadow-md p-4">
+                        <h2 class="text-xl font-bold mb-4">Configuração do Sorteio</h2>
+                        <form id="teams-config-form" class="space-y-4">
+                            <div>
+                                <label for="players-per-team" class="block mb-1 font-medium">
+                                    Jogadores por Time
+                                </label>
+                                <select 
+                                    id="players-per-team" 
+                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                    <option value="4">4 jogadores</option>
+                                    <option value="5" selected>5 jogadores</option>
+                                    <option value="6">6 jogadores</option>
+                                    <option value="7">7 jogadores</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="number-of-teams" class="block mb-1 font-medium">
+                                    Número de Times
+                                </label>
+                                <select 
+                                    id="number-of-teams" 
+                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                    <option value="2" selected>2 times</option>
+                                    <option value="3">3 times</option>
+                                    <option value="4">4 times</option>
+                                </select>
+                            </div>
+
+                            <div id="team-names-container" class="space-y-3">
+                                <label class="block font-medium">Nomes dos Times</label>
+                                <div class="team-name-input">
+                                    <label class="text-sm text-gray-600">Time 1</label>
+                                    <input 
+                                        type="text" 
+                                        class="team-name w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                        value="Time A"
+                                        placeholder="Nome do time"
+                                    >
+                                </div>
+                                <div class="team-name-input">
+                                    <label class="text-sm text-gray-600">Time 2</label>
+                                    <input 
+                                        type="text" 
+                                        class="team-name w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                        value="Time B"
+                                        placeholder="Nome do time"
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <button 
+                                    type="button" 
+                                    id="draw-teams-btn" 
+                                    class="px-4 py-3 w-full bg-primary hover:bg-secondary text-white font-medium rounded-lg transition-colors flex items-center justify-center"
+                                >
+                                    <i class="fas fa-random mr-2"></i>Sortear Times
+                                </button>
+                            </div>
+                        </form>
+
+                        <div id="draw-progress" class="mt-6 hidden">
+                            <h3 class="font-medium mb-2">Progresso do Sorteio</h3>
+                            <div class="bg-gray-200 rounded-full h-4 mb-2">
+                                <div id="progress-bar" class="bg-primary h-4 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p id="progress-text" class="text-sm text-gray-600">
+                                Procurando equilíbrio ideal...
+                            </p>
+                        </div>
+
+                        <div id="balance-indicator" class="mt-6 hidden">
+                            <h3 class="font-medium mb-2">Equilíbrio dos Times</h3>
+                            <div class="bg-gray-200 rounded-full h-4 mb-2">
+                                <div id="balance-bar" class="bg-green-500 h-4 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p id="balance-text" class="text-sm text-gray-600">
+                                Equilíbrio: <span id="balance-value">0%</span>
+                            </p>
+                            <button 
+                                id="accept-balance-btn" 
+                                class="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors w-full hidden"
+                            >
+                                <i class="fas fa-check mr-2"></i>Aceitar Equilíbrio
+                            </button>
+                            <button 
+                                id="try-again-btn" 
+                                class="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors w-full hidden"
+                            >
+                                <i class="fas fa-sync-alt mr-2"></i>Tentar Novamente
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Results -->
+                    <div class="lg:col-span-2">
+                        <div id="draw-results" class="hidden">
+                            <div class="flex flex-col md:flex-row justify-between items-start mb-4">
+                                <h2 class="text-xl font-bold mb-4 md:mb-0">Resultado do Sorteio</h2>
+                                
+                                <!-- Compartilhar Resultado -->
+                                <div id="share-buttons" class="hidden flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                                    <button 
+                                        id="share-draw-whatsapp" 
+                                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center"
+                                    >
+                                        <i class="fab fa-whatsapp mr-2 text-lg"></i>Compartilhar Sorteio
+                                    </button>
+                                    <button 
+                                        id="share-players-whatsapp" 
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center"
+                                    >
+                                        <i class="fas fa-users mr-2"></i>Compartilhar Jogadores
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="teams-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Teams will be displayed here -->
+                            </div>
+                        </div>
+
+                        <div id="no-draw-results" class="bg-light-secondary rounded-lg shadow-md p-8 text-center">
+                            <img src="https://i.imgur.com/lFGdtJU.png" alt="Sorteio de Times" class="w-40 h-40 mx-auto mb-4 opacity-30">
+                            <h3 class="text-xl font-bold mb-2">Nenhum sorteio realizado</h3>
+                            <p class="text-gray-600 mb-4">
+                                Configure os parâmetros e clique em "Sortear Times" para gerar os times.
+                            </p>
+                            <div class="space-y-4 max-w-md mx-auto">
+                                <div class="bg-white p-3 rounded-lg shadow text-left">
+                                    <h4 class="font-bold text-primary mb-1">Regras de Equilíbrio:</h4>
+                                    <ul class="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                                        <li>Cada time terá pelo menos um jogador de cada posição (ZAG, MEI, ATA), quando possível</li>
+                                        <li>O nível técnico total dos times será equilibrado</li>
+                                        <li>Todos os times terão o mesmo número de jogadores</li>
+                                        <li>Os cabeças de chave serão distribuídos primeiro</li>
+                                        <li>Os perebas do dia serão distribuídos depois</li>
+                                        <li>Restrições de jogadores serão respeitadas</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Notification Toast -->
+        <div id="toast" class="fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg bg-gray-800 text-white transform translate-y-full transition-transform duration-300 flex items-center z-50">
+            <span id="toast-icon" class="mr-2"><i class="fas fa-check-circle"></i></span>
+            <span id="toast-message">Mensagem de notificação</span>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-auto bg-light-secondary text-center p-4 text-sm text-gray-600">
+            <p>Pelada Manager &copy; 2023</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the app
+            const app = {
+                players: [],
+                currentId: 1,
+                editingPlayer: null,
+                drawnTeams: [],
+                sortingInProgress: false,
+                namesRevealed: false,
+                playerRestrictions: [],
+                
+                // DOM Elements
+                elements: {
+                    // Player form elements
+                    playerForm: document.getElementById('player-form'),
+                    playerId: document.getElementById('player-id'),
+                    playerName: document.getElementById('player-name'),
+                    playerPosition: document.getElementById('player-position'),
+                    playerLevel: document.getElementById('player-level'),
+                    levelValue: document.getElementById('level-value'),
+                    playerAvailable: document.getElementById('player-available'),
+                    playerStar: document.getElementById('player-star'),
+                    playerWeak: document.getElementById('player-weak'),
+                    cancelButton: document.getElementById('cancel-button'),
+                    formTitle: document.getElementById('form-title'),
+                    
+                    // Player list elements
+                    playerTableBody: document.getElementById('player-table-body'),
+                    playerSearch: document.getElementById('player-search'),
+                    
+                    // Stats elements
+                    totalPlayers: document.getElementById('total-players'),
+                    availablePlayers: document.getElementById('available-players'),
+                    zagCount: document.getElementById('zag-count'),
+                    meiCount: document.getElementById('mei-count'),
+                    ataCount: document.getElementById('ata-count'),
+                    avgLevel: document.getElementById('avg-level'),
+                    
+                    // Quick action buttons
+                    toggleAllBtn: document.getElementById('toggle-all-btn'),
+                    resetStarsBtn: document.getElementById('reset-stars-btn'),
+                    clearAllBtn: document.getElementById('clear-all-btn'),
+                    
+                    // Teams config elements
+                    teamsConfigForm: document.getElementById('teams-config-form'),
+                    playersPerTeam: document.getElementById('players-per-team'),
+                    numberOfTeams: document.getElementById('number-of-teams'),
+                    teamNamesContainer: document.getElementById('team-names-container'),
+                    
+                    // Teams draw elements
+                    drawTeamsBtn: document.getElementById('draw-teams-btn'),
+                    teamsContainer: document.getElementById('teams-container'),
+                    drawResults: document.getElementById('draw-results'),
+                    noDrawResults: document.getElementById('no-draw-results'),
+                    
+                    // Draw progress elements
+                    drawProgress: document.getElementById('draw-progress'),
+                    progressBar: document.getElementById('progress-bar'),
+                    progressText: document.getElementById('progress-text'),
+                    
+                    // Balance indicator elements
+                    balanceIndicator: document.getElementById('balance-indicator'),
+                    balanceBar: document.getElementById('balance-bar'),
+                    balanceText: document.getElementById('balance-text'),
+                    balanceValue: document.getElementById('balance-value'),
+                    acceptBalanceBtn: document.getElementById('accept-balance-btn'),
+                    tryAgainBtn: document.getElementById('try-again-btn'),
+                    
+                    // Share elements
+                    shareDrawWhatsapp: document.getElementById('share-draw-whatsapp'),
+                    sharePlayersWhatsapp: document.getElementById('share-players-whatsapp'),
+                    shareButtons: document.getElementById('share-buttons'),
+                    
+                    // Restriction elements
+                    restrictionForm: document.getElementById('restriction-form'),
+                    restrictionPlayer1: document.getElementById('restriction-player1'),
+                    restrictionPlayer2: document.getElementById('restriction-player2'),
+                    restrictionsList: document.getElementById('restrictions-list'),
+                    noRestrictions: document.getElementById('no-restrictions'),
+                    
+                    // Tab elements
+                    tabButtons: document.querySelectorAll('.tab-button'),
+                    tabContents: document.querySelectorAll('.tab-content'),
+                    
+                    // Toast
+                    toast: document.getElementById('toast'),
+                    toastIcon: document.getElementById('toast-icon'),
+                    toastMessage: document.getElementById('toast-message')
+                },
+                
+                init() {
+                    this.loadData();
+                    this.setupEventListeners();
+                    this.updateStats();
+                    this.updateUI();
+                    this.loadDemoPlayers();
+                },
+                
+                // Load data from localStorage
+                loadData() {
+                    // Load players
+                    const savedPlayers = localStorage.getItem('peladaPlayers');
+                    if (savedPlayers) {
+                        this.players = JSON.parse(savedPlayers);
+                        // Find the max ID to continue from there
+                        this.currentId = this.players.reduce((max, player) => Math.max(max, player.id), 0) + 1;
+                    }
+                    
+                    // Load restrictions
+                    const savedRestrictions = localStorage.getItem('peladaRestrictions');
+                    if (savedRestrictions) {
+                        this.playerRestrictions = JSON.parse(savedRestrictions);
+                    }
+                },
+                
+                // Save players to localStorage
+                savePlayers() {
+                    localStorage.setItem('peladaPlayers', JSON.stringify(this.players));
+                },
+                
+                // Save restrictions to localStorage
+                saveRestrictions() {
+                    localStorage.setItem('peladaRestrictions', JSON.stringify(this.playerRestrictions));
+                },
+                
+                // Setup event listeners
+                setupEventListeners() {
+                    // Player level slider
+                    this.elements.playerLevel.addEventListener('input', () => {
+                        this.elements.levelValue.textContent = this.elements.playerLevel.value;
+                    });
+                    
+                    // Player form
+                    this.elements.playerForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.savePlayer();
+                    });
+                    
+                    // Cancel button
+                    this.elements.cancelButton.addEventListener('click', () => {
+                        this.cancelEdit();
+                    });
+                    
+                    // Player search
+                    this.elements.playerSearch.addEventListener('input', () => {
+                        this.filterPlayers();
+                    });
+                    
+                    // Quick action buttons
+                    this.elements.toggleAllBtn.addEventListener('click', () => {
+                        this.toggleAllPlayers();
+                    });
+                    
+                    this.elements.resetStarsBtn.addEventListener('click', () => {
+                        this.resetStarsAndWeaks();
+                    });
+                    
+                    this.elements.clearAllBtn.addEventListener('click', () => {
+                        if (confirm('Tem certeza que deseja apagar todos os jogadores? Esta ação não pode ser desfeita.')) {
+                            this.clearAllPlayers();
+                        }
+                    });
+                    
+                    // Teams config
+                    this.elements.numberOfTeams.addEventListener('change', () => {
+                        this.updateTeamNamesInputs();
+                    });
+                    
+                    // Draw teams
+                    this.elements.drawTeamsBtn.addEventListener('click', () => {
+                        this.drawTeams();
+                    });
+                    
+                    // Accept balance
+                    this.elements.acceptBalanceBtn.addEventListener('click', () => {
+                        this.revealPlayerNames();
+                    });
+                    
+                    // Try again
+                    this.elements.tryAgainBtn.addEventListener('click', () => {
+                        this.drawTeams();
+                    });
+                    
+                    // Share via WhatsApp
+                    this.elements.shareDrawWhatsapp.addEventListener('click', () => {
+                        this.shareViaWhatsApp(this.formatDrawResultsForShare());
+                    });
+                    
+                    this.elements.sharePlayersWhatsapp.addEventListener('click', () => {
+                        this.shareViaWhatsApp(this.formatPlayersForShare());
+                    });
+                    
+                    // Restriction form
+                    this.elements.restrictionForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.addRestriction();
+                    });
+                    
+                    // Tab navigation
+                    this.elements.tabButtons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            const tabName = button.getAttribute('data-tab');
+                            this.switchTab(tabName);
+                            
+                            // Update restriction players if switching to restrictions tab
+                            if (tabName === 'restrictions') {
+                                this.updateRestrictionPlayersDropdown();
+                            }
+                        });
+                    });
+                },
+                
+                // Add a new player or update existing player
+                savePlayer() {
+                    const playerId = this.elements.playerId.value;
+                    const name = this.elements.playerName.value.trim();
+                    const position = this.elements.playerPosition.value;
+                    const level = parseFloat(this.elements.playerLevel.value);
+                    const available = this.elements.playerAvailable.checked;
+                    const star = this.elements.playerStar.checked;
+                    const weak = this.elements.playerWeak.checked;
+                    
+                    // Validate form
+                    if (!name || !position) {
+                        this.showToast('Nome e posição são obrigatórios!', 'error');
+                        return;
+                    }
+                    
+                    // Check for duplicate name
+                    if (this.players.some(p => p.name.toLowerCase() === name.toLowerCase() && 
+                        (!playerId || p.id !== parseInt(playerId)))) {
+                        this.showToast('Já existe um jogador com esse nome!', 'error');
+                        return;
+                    }
+                    
+                    // Check for both star and weak checked
+                    if (star && weak) {
+                        this.showToast('Jogador não pode ser Cabeça de Chave e Pereba ao mesmo tempo!', 'error');
+                        return;
+                    }
+                    
+                    if (playerId) {
+                        // Update existing player
+                        const index = this.players.findIndex(p => p.id === parseInt(playerId));
+                        if (index !== -1) {
+                            // Get old name to update restrictions if needed
+                            const oldName = this.players[index].name;
+                            
+                            this.players[index] = {
+                                id: parseInt(playerId),
+                                name,
+                                position,
+                                level,
+                                available,
+                                star,
+                                weak
+                            };
+                            
+                            // Update player in restrictions if name changed
+                            if (oldName !== name) {
+                                this.updatePlayerInRestrictions(oldName, name);
+                            }
+                            
+                            this.showToast('Jogador atualizado com sucesso!', 'success');
+                        }
+                    } else {
+                        // Add new player
+                        const newPlayer = {
+                            id: this.currentId++,
+                            name,
+                            position,
+                            level,
+                            available,
+                            star,
+                            weak
+                        };
+                        this.players.push(newPlayer);
+                        this.showToast('Jogador adicionado com sucesso!', 'success');
+                    }
+                    
+                    // Save players to localStorage
+                    this.savePlayers();
+                    
+                    // Reset form
+                    this.resetForm();
+                    
+                    // Update stats and UI
+                    this.updateStats();
+                    this.updatePlayerList();
+                    this.updateRestrictionPlayersDropdown();
+                },
+                
+                // Add a restriction between two players
+                addRestriction() {
+                    const player1 = this.elements.restrictionPlayer1.value;
+                    const player2 = this.elements.restrictionPlayer2.value;
+                    
+                    // Validate selection
+                    if (!player1 || !player2) {
+                        this.showToast('Selecione dois jogadores!', 'error');
+                        return;
+                    }
+                    
+                    if (player1 === player2) {
+                        this.showToast('Selecione jogadores diferentes!', 'error');
+                        return;
+                    }
+                    
+                    // Check if restriction already exists
+                    const exists = this.playerRestrictions.some(r => 
+                        (r.player1 === player1 && r.player2 === player2) || 
+                        (r.player1 === player2 && r.player2 === player1)
+                    );
+                    
+                    if (exists) {
+                        this.showToast('Esta restrição já existe!', 'error');
+                        return;
+                    }
+                    
+                    // Add restriction
+                    this.playerRestrictions.push({
+                        id: Date.now(), // Simple unique ID
+                        player1,
+                        player2
+                    });
+                    
+                    // Save restrictions
+                    this.saveRestrictions();
+                    
+                    // Update UI
+                    this.updateRestrictionsList();
+                    
+                    // Reset form
+                    this.elements.restrictionPlayer1.value = '';
+                    this.elements.restrictionPlayer2.value = '';
+                    
+                    this.showToast('Restrição adicionada com sucesso!', 'success');
+                },
+                
+                // Delete a restriction
+                deleteRestriction(id) {
+                    this.playerRestrictions = this.playerRestrictions.filter(r => r.id !== id);
+                    this.saveRestrictions();
+                    this.updateRestrictionsList();
+                    this.showToast('Restrição removida com sucesso!', 'success');
+                },
+                
+                // Update player name in restrictions
+                updatePlayerInRestrictions(oldName, newName) {
+                    let updated = false;
+                    
+                    this.playerRestrictions.forEach(r => {
+                        if (r.player1 === oldName) {
+                            r.player1 = newName;
+                            updated = true;
+                        }
+                        if (r.player2 === oldName) {
+                            r.player2 = newName;
+                            updated = true;
+                        }
+                    });
+                    
+                    if (updated) {
+                        this.saveRestrictions();
+                        this.updateRestrictionsList();
+                    }
+                },
+                
+                // Update restrictions list UI
+                updateRestrictionsList() {
+                    // Show/hide no restrictions message
+                    if (this.playerRestrictions.length === 0) {
+                        this.elements.noRestrictions.classList.remove('hidden');
+                        this.elements.restrictionsList.classList.add('hidden');
+                        return;
+                    } else {
+                        this.elements.noRestrictions.classList.add('hidden');
+                        this.elements.restrictionsList.classList.remove('hidden');
+                    }
+                    
+                    // Clear list
+                    this.elements.restrictionsList.innerHTML = '';
+                    
+                    // Add each restriction
+                    this.playerRestrictions.forEach(r => {
+                        const li = document.createElement('li');
+                        li.className = 'bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between items-center';
+                        li.innerHTML = `
+                            <div>
+                                <span class="font-medium">${r.player1}</span>
+                                <span class="mx-2 text-red-500"><i class="fas fa-times"></i></span>
+                                <span class="font-medium">${r.player2}</span>
+                            </div>
+                            <button class="delete-restriction text-red-500 hover:text-red-700" data-id="${r.id}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        `;
+                        
+                        this.elements.restrictionsList.appendChild(li);
+                    });
+                    
+                    // Add event listeners to delete buttons
+                    document.querySelectorAll('.delete-restriction').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            this.deleteRestriction(parseInt(btn.getAttribute('data-id')));
+                        });
+                    });
+                },
+                
+                // Update restriction players dropdown
+                updateRestrictionPlayersDropdown() {
+                    // Clear current options except the first one
+                    while (this.elements.restrictionPlayer1.options.length > 1) {
+                        this.elements.restrictionPlayer1.remove(1);
+                    }
+                    
+                    while (this.elements.restrictionPlayer2.options.length > 1) {
+                        this.elements.restrictionPlayer2.remove(1);
+                    }
+                    
+                    // Sort players by name
+                    const sortedPlayers = [...this.players].sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    // Add players to the dropdowns
+                    sortedPlayers.forEach(player => {
+                        const option1 = document.createElement('option');
+                        option1.value = player.name;
+                        option1.textContent = player.name;
+                        this.elements.restrictionPlayer1.appendChild(option1);
+                        
+                        const option2 = document.createElement('option');
+                        option2.value = player.name;
+                        option2.textContent = player.name;
+                        this.elements.restrictionPlayer2.appendChild(option2);
+                    });
+                },
+                
+                // Edit a player
+                editPlayer(id) {
+                    const player = this.players.find(p => p.id === id);
+                    if (player) {
+                        this.editingPlayer = player;
+                        
+                        // Fill form with player data
+                        this.elements.playerId.value = player.id;
+                        this.elements.playerName.value = player.name;
+                        this.elements.playerPosition.value = player.position;
+                        this.elements.playerLevel.value = player.level;
+                        this.elements.levelValue.textContent = player.level;
+                        this.elements.playerAvailable.checked = player.available;
+                        this.elements.playerStar.checked = player.star || false;
+                        this.elements.playerWeak.checked = player.weak || false;
+                        
+                        // Update form title and show cancel button
+                        this.elements.formTitle.textContent = 'Editar Jogador';
+                        this.elements.cancelButton.classList.remove('hidden');
+                    }
+                },
+                
+                // Delete a player
+                deletePlayer(id) {
+                    if (confirm('Tem certeza que deseja excluir este jogador?')) {
+                        const playerToDelete = this.players.find(p => p.id === id);
+                        if (playerToDelete) {
+                            // Remove player from restrictions
+                            this.playerRestrictions = this.playerRestrictions.filter(r =>
+                                r.player1 !== playerToDelete.name && r.player2 !== playerToDelete.name
+                            );
+                            this.saveRestrictions();
+                            this.updateRestrictionsList();
+                        }
+                        
+                        this.players = this.players.filter(p => p.id !== id);
+                        
+                        // Save players to localStorage
+                        this.savePlayers();
+                        
+                        // Update stats and UI
+                        this.updateStats();
+                        this.updatePlayerList();
+                        this.updateRestrictionPlayersDropdown();
+                        
+                        this.showToast('Jogador excluído com sucesso!', 'success');
+                    }
+                },
+                
+                // Cancel player edit
+                cancelEdit() {
+                    this.resetForm();
+                    this.showToast('Edição cancelada', 'info');
+                },
+                
+                // Reset the player form
+                resetForm() {
+                    this.editingPlayer = null;
+                    this.elements.playerForm.reset();
+                    this.elements.playerId.value = '';
+                    this.elements.levelValue.textContent = '3.0';
+                    this.elements.playerLevel.value = 3.0;
+                    this.elements.formTitle.textContent = 'Adicionar Jogador';
+                    this.elements.cancelButton.classList.add('hidden');
+                },
+                
+                // Update player list in the UI
+                updatePlayerList() {
+                    const searchTerm = this.elements.playerSearch.value.toLowerCase();
+                    const filteredPlayers = searchTerm 
+                        ? this.players.filter(p => p.name.toLowerCase().includes(searchTerm))
+                        : this.players;
+                    
+                    this.elements.playerTableBody.innerHTML = '';
+                    
+                    if (filteredPlayers.length === 0) {
+                        const emptyRow = document.createElement('tr');
+                        emptyRow.innerHTML = `
+                            <td colspan="5" class="py-4 px-4 text-center text-gray-500">
+                                ${searchTerm ? 'Nenhum jogador encontrado.' : 'Nenhum jogador cadastrado.'}
+                            </td>
+                        `;
+                        this.elements.playerTableBody.appendChild(emptyRow);
+                        return;
+                    }
+                    
+                    // Sort players by name
+                    const sortedPlayers = [...filteredPlayers].sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    sortedPlayers.forEach(player => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-b hover:bg-gray-50 transition-colors';
+                        
+                        let positionClass = '';
+                        if (player.position === 'ZAG') positionClass = 'bg-red-100 text-red-800';
+                        else if (player.position === 'MEI') positionClass = 'bg-green-100 text-green-800';
+                        else if (player.position === 'ATA') positionClass = 'bg-blue-100 text-blue-800';
+                        
+                        let nameDisplay = player.name;
+                        if (player.star) nameDisplay += ' ⭐';
+                        if (player.weak) nameDisplay += ' <i class="fas fa-arrow-down text-red-600"></i>';
+                        
+                        row.innerHTML = `
+                            <td class="py-3 px-4">${nameDisplay}</td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-1 rounded-full text-xs ${positionClass}">${player.position}</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <div class="inline-block w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold">${player.level}</div>
+                            </td>
+                            <td class="py-3 px-4">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="player-available-toggle" data-id="${player.id}" ${player.available ? 'checked' : ''}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </td>
+                            <td class="py-3 px-4">
+                                <div class="flex space-x-2">
+                                    <button class="edit-player-btn text-blue-600 hover:text-blue-800" data-id="${player.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="delete-player-btn text-red-600 hover:text-red-800" data-id="${player.id}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        
+                        this.elements.playerTableBody.appendChild(row);
+                    });
+                    
+                    // Add event listeners to the new buttons
+                    document.querySelectorAll('.edit-player-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            this.editPlayer(parseInt(btn.getAttribute('data-id')));
+                        });
+                    });
+                    
+                    document.querySelectorAll('.delete-player-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            this.deletePlayer(parseInt(btn.getAttribute('data-id')));
+                        });
+                    });
+                    
+                    document.querySelectorAll('.player-available-toggle').forEach(toggle => {
+                        toggle.addEventListener('change', (e) => {
+                            const id = parseInt(toggle.getAttribute('data-id'));
+                            const player = this.players.find(p => p.id === id);
+                            if (player) {
+                                player.available = toggle.checked;
+                                this.savePlayers();
+                                this.updateStats();
+                            }
+                        });
+                    });
+                },
+                
+                // Filter players by name
+                filterPlayers() {
+                    this.updatePlayerList();
+                },
+                
+                // Update player statistics
+                updateStats() {
+                    const totalPlayers = this.players.length;
+                    const availablePlayers = this.players.filter(p => p.available).length;
+                    const zagCount = this.players.filter(p => p.position === 'ZAG').length;
+                    const meiCount = this.players.filter(p => p.position === 'MEI').length;
+                    const ataCount = this.players.filter(p => p.position === 'ATA').length;
+                    
+                    // Calculate average level of available players
+                    let avgLevel = 0;
+                    if (availablePlayers > 0) {
+                        const totalLevel = this.players
+                            .filter(p => p.available)
+                            .reduce((sum, p) => sum + p.level, 0);
+                        avgLevel = totalLevel / availablePlayers;
+                    }
+                    
+                    // Update stats in the UI
+                    this.elements.totalPlayers.textContent = totalPlayers;
+                    this.elements.availablePlayers.textContent = availablePlayers;
+                    this.elements.zagCount.textContent = zagCount;
+                    this.elements.meiCount.textContent = meiCount;
+                    this.elements.ataCount.textContent = ataCount;
+                    this.elements.avgLevel.textContent = avgLevel.toFixed(1);
+                    
+                    // Update toggle all button text
+                    if (totalPlayers > 0) {
+                        const allAvailable = totalPlayers === availablePlayers;
+                        this.elements.toggleAllBtn.innerHTML = allAvailable 
+                            ? '<i class="fas fa-toggle-off mr-2"></i>Ninguém Disponível'
+                            : '<i class="fas fa-toggle-on mr-2"></i>Todos Disponíveis';
+                    }
+                },
+                
+                // Toggle all players availability
+                toggleAllPlayers() {
+                    if (this.players.length === 0) {
+                        this.showToast('Nenhum jogador cadastrado!', 'error');
+                        return;
+                    }
+                    
+                    const allAvailable = this.players.every(p => p.available);
+                    this.players.forEach(p => p.available = !allAvailable);
+                    
+                    // Save players to localStorage
+                    this.savePlayers();
+                    
+                    // Update stats and UI
+                    this.updateStats();
+                    this.updatePlayerList();
+                    
+                    this.showToast(`Todos os jogadores estão ${allAvailable ? 'indisponíveis' : 'disponíveis'} agora!`, 'success');
+                },
+                
+                // Reset stars and weaks
+                resetStarsAndWeaks() {
+                    if (this.players.length === 0) {
+                        this.showToast('Nenhum jogador cadastrado!', 'error');
+                        return;
+                    }
+                    
+                    this.players.forEach(p => {
+                        p.star = false;
+                        p.weak = false;
+                    });
+                    
+                    // Save players to localStorage
+                    this.savePlayers();
+                    
+                    // Update stats and UI
+                    this.updatePlayerList();
+                    
+                    this.showToast('Cabeças de Chave e Perebas resetados!', 'success');
+                },
+                
+                // Clear all players
+                clearAllPlayers() {
+                    this.players = [];
+                    this.currentId = 1;
+                    
+                    // Clear restrictions too
+                    this.playerRestrictions = [];
+                    this.saveRestrictions();
+                    this.updateRestrictionsList();
+                    
+                    // Save players to localStorage
+                    this.savePlayers();
+                    
+                    // Update stats and UI
+                    this.updateStats();
+                    this.updatePlayerList();
+                    
+                    this.showToast('Todos os jogadores foram removidos!', 'success');
+                },
+                
+                // Update team names inputs
+                updateTeamNamesInputs() {
+                    const numberOfTeams = parseInt(this.elements.numberOfTeams.value);
+                    
+                    // Clear container
+                    this.elements.teamNamesContainer.innerHTML = '<label class="block font-medium">Nomes dos Times</label>';
+                    
+                    // Default team names
+                    const defaultNames = ['Time A', 'Time B', 'Time C', 'Time D'];
+                    
+                    // Add inputs for each team
+                    for (let i = 0; i < numberOfTeams; i++) {
+                        const div = document.createElement('div');
+                        div.className = 'team-name-input';
+                        div.innerHTML = `
+                            <label class="text-sm text-gray-600">Time ${i + 1}</label>
+                            <input 
+                                type="text" 
+                                class="team-name w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                                value="${defaultNames[i]}"
+                                placeholder="Nome do time"
+                            >
+                        `;
+                        this.elements.teamNamesContainer.appendChild(div);
+                    }
+                },
+                
+                // Check if two players have a restriction
+                playersHaveRestriction(player1Name, player2Name) {
+                    return this.playerRestrictions.some(r => 
+                        (r.player1 === player1Name && r.player2 === player2Name) || 
+                        (r.player1 === player2Name && r.player2 === player1Name)
+                    );
+                },
+                
+                // Draw teams
+                drawTeams() {
+                    // Get available players
+                    const availablePlayers = this.players.filter(p => p.available);
+                    
+                    // Check if there are enough players
+                    if (availablePlayers.length === 0) {
+                        this.showToast('Nenhum jogador disponível para sorteio!', 'error');
+                        return;
+                    }
+                    
+                    // Get configuration
+                    const playersPerTeam = parseInt(this.elements.playersPerTeam.value);
+                    const numberOfTeams = parseInt(this.elements.numberOfTeams.value);
+                    
+                    // Check if there are enough players for the number of teams
+                    if (availablePlayers.length < numberOfTeams) {
+                        this.showToast(`Não há jogadores suficientes para ${numberOfTeams} times!`, 'error');
+                        return;
+                    }
+                    
+                    // Get team names
+                    const teamNameInputs = document.querySelectorAll('.team-name');
+                    const teamNames = Array.from(teamNameInputs).map(input => input.value.trim() || 'Time');
+                    
+                    // Show draw progress
+                    this.elements.drawProgress.classList.remove('hidden');
+                    this.elements.balanceIndicator.classList.add('hidden');
+                    this.elements.drawTeamsBtn.disabled = true;
+                    this.sortingInProgress = true;
+                    
+                    // Reset progress bar
+                    this.elements.progressBar.style.width = '0%';
+                    this.elements.progressText.textContent = 'Procurando equilíbrio ideal...';
+                    
+                    // Perform draw algorithm asynchronously
+                    setTimeout(() => {
+                        const result = this.performTeamDraw(availablePlayers, playersPerTeam, numberOfTeams, teamNames);
+                        this.drawnTeams = result.teams;
+                        
+                        // Hide draw progress
+                        this.elements.drawProgress.classList.add('hidden');
+                        this.elements.balanceIndicator.classList.remove('hidden');
+                        
+                        // Show balance indicator
+                        const balancePercentage = Math.min(100, Math.max(0, result.balanceScore * 100));
+                        this.elements.balanceBar.style.width = `${balancePercentage}%`;
+                        this.elements.balanceValue.textContent = `${balancePercentage.toFixed(0)}%`;
+                        
+                        // Set balance bar color
+                        if (balancePercentage >= 80) {
+                            this.elements.balanceBar.className = 'bg-green-500 h-4 rounded-full';
+                        } else if (balancePercentage >= 60) {
+                            this.elements.balanceBar.className = 'bg-yellow-500 h-4 rounded-full';
+                        } else {
+                            this.elements.balanceBar.className = 'bg-red-500 h-4 rounded-full';
+                        }
+                        
+                        // Show accept/try again buttons
+                        this.elements.acceptBalanceBtn.classList.remove('hidden');
+                        this.elements.tryAgainBtn.classList.remove('hidden');
+                        
+                        // Display teams with hidden names
+                        this.displayTeams(false);
+                        
+                        // Allow trying again
+                        this.elements.drawTeamsBtn.disabled = false;
+                        this.sortingInProgress = false;
+                    }, 500);
+                },
+                
+                // Perform team draw algorithm
+                performTeamDraw(availablePlayers, playersPerTeam, numberOfTeams, teamNames) {
+                    // Get stars and weak players
+                    const starPlayers = availablePlayers.filter(p => p.star);
+                    const weakPlayers = availablePlayers.filter(p => p.weak && !p.star);
+                    const regularPlayers = availablePlayers.filter(p => !p.star && !p.weak);
+                    
+                    // Initialize best result
+                    let bestTry = {
+                        teams: [],
+                        balanceScore: 0,
+                        positionBalanceScore: 0,
+                        restrictionScore: 0
+                    };
+                    
+                    const maxTries = 50;
+                    
+                    // Try multiple times to find the best balance
+                    for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
+                        // Update progress bar
+                        this.elements.progressBar.style.width = `${(tryIndex / maxTries) * 100}%`;
+                        
+                        // Create empty teams
+                        const teams = teamNames.map((name, index) => ({
+                            name,
+                            players: [],
+                            totalLevel: 0,
+                            index
+                        }));
+                        
+                        // Distribute stars first, one per team if possible
+                        let availableStars = [...starPlayers];
+                        if (availableStars.length > 0) {
+                            // Shuffle stars
+                            availableStars = this.shuffleArray(availableStars);
+                            
+                            // Distribute one star per team if possible
+                            for (let i = 0; i < Math.min(teams.length, availableStars.length); i++) {
+                                teams[i].players.push(availableStars[i]);
+                                teams[i].totalLevel += availableStars[i].level;
+                            }
+                            
+                            // Put remaining stars to the teams with lowest levels
+                            if (availableStars.length > teams.length) {
+                                for (let i = teams.length; i < availableStars.length; i++) {
+                                    // Find team with lowest level
+                                    const targetTeam = teams.reduce((prev, curr) => 
+                                        prev.totalLevel < curr.totalLevel ? prev : curr
+                                    );
+                                    
+                                    // Check restrictions
+                                    const starPlayer = availableStars[i];
+                                    const hasRestriction = targetTeam.players.some(p => 
+                                        this.playersHaveRestriction(p.name, starPlayer.name)
+                                    );
+                                    
+                                    if (hasRestriction) {
+                                        // Find next best team without restrictions
+                                        const teamsWithoutRestrictions = teams.filter(team => 
+                                            !team.players.some(p => this.playersHaveRestriction(p.name, starPlayer.name))
+                                        );
+                                        
+                                        if (teamsWithoutRestrictions.length > 0) {
+                                            // Get team with lowest level among those without restrictions
+                                            const alternateTeam = teamsWithoutRestrictions.reduce((prev, curr) => 
+                                                prev.totalLevel < curr.totalLevel ? prev : curr
+                                            );
+                                            
+                                            alternateTeam.players.push(starPlayer);
+                                            alternateTeam.totalLevel += starPlayer.level;
+                                        } else {
+                                            // If all teams have restrictions, still add to lowest level team
+                                            targetTeam.players.push(starPlayer);
+                                            targetTeam.totalLevel += starPlayer.level;
+                                        }
+                                    } else {
+                                        targetTeam.players.push(starPlayer);
+                                        targetTeam.totalLevel += starPlayer.level;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Distribute weaks second, one per team if possible
+                        let availableWeaks = [...weakPlayers];
+                        if (availableWeaks.length > 0) {
+                            // Shuffle weaks
+                            availableWeaks = this.shuffleArray(availableWeaks);
+                            
+                            // Sort teams by level (descending)
+                            teams.sort((a, b) => b.totalLevel - a.totalLevel);
+                            
+                            // Distribute one weak per team if possible
+                            for (let i = 0; i < Math.min(teams.length, availableWeaks.length); i++) {
+                                const weakPlayer = availableWeaks[i];
+                                
+                                // Check restrictions
+                                const hasRestriction = teams[i].players.some(p => 
+                                    this.playersHaveRestriction(p.name, weakPlayer.name)
+                                );
+                                
+                                if (hasRestriction) {
+                                    // Find another team without restrictions
+                                    const teamsWithoutRestrictions = teams.filter(team => 
+                                        !team.players.some(p => this.playersHaveRestriction(p.name, weakPlayer.name))
+                                    );
+                                    
+                                    if (teamsWithoutRestrictions.length > 0) {
+                                        // Get team with highest level among those without restrictions
+                                        const alternateTeam = teamsWithoutRestrictions.reduce((prev, curr) => 
+                                            prev.totalLevel > curr.totalLevel ? prev : curr
+                                        );
+                                        
+                                        alternateTeam.players.push(weakPlayer);
+                                        alternateTeam.totalLevel += weakPlayer.level;
+                                    } else {
+                                        // If all teams have restrictions, still add to highest level team
+                                        teams[i].players.push(weakPlayer);
+                                        teams[i].totalLevel += weakPlayer.level;
+                                    }
+                                } else {
+                                    teams[i].players.push(weakPlayer);
+                                    teams[i].totalLevel += weakPlayer.level;
+                                }
+                            }
+                            
+                            // Sort teams by level again (ascending)
+                            teams.sort((a, b) => a.totalLevel - b.totalLevel);
+                            
+                            // Put remaining weaks to the teams with highest levels
+                            if (availableWeaks.length > teams.length) {
+                                for (let i = teams.length; i < availableWeaks.length; i++) {
+                                    // Find team with highest level
+                                    const targetTeam = teams.reduce((prev, curr) => 
+                                        prev.totalLevel > curr.totalLevel ? prev : curr
+                                    );
+                                    
+                                    const weakPlayer = availableWeaks[i];
+                                    
+                                    // Check for restrictions
+                                    const hasRestriction = targetTeam.players.some(p => 
+                                        this.playersHaveRestriction(p.name, weakPlayer.name)
+                                    );
+                                    
+                                    if (hasRestriction) {
+                                        // Find another team without restrictions
+                                        const teamsWithoutRestrictions = teams.filter(team => 
+                                            !team.players.some(p => this.playersHaveRestriction(p.name, weakPlayer.name))
+                                        );
+                                        
+                                        if (teamsWithoutRestrictions.length > 0) {
+                                            // Get team with highest level among those without restrictions
+                                            const alternateTeam = teamsWithoutRestrictions.reduce((prev, curr) => 
+                                                prev.totalLevel > curr.totalLevel ? prev : curr
+                                            );
+                                            
+                                            alternateTeam.players.push(weakPlayer);
+                                            alternateTeam.totalLevel += weakPlayer.level;
+                                        } else {
+                                            // If all teams have restrictions, still add to highest level team
+                                            targetTeam.players.push(weakPlayer);
+                                            targetTeam.totalLevel += weakPlayer.level;
+                                        }
+                                    } else {
+                                        targetTeam.players.push(weakPlayer);
+                                        targetTeam.totalLevel += weakPlayer.level;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Shuffle regular players
+                        let remainingPlayers = this.shuffleArray([...regularPlayers]);
+                        
+                        // First, try to ensure each team has at least one player of each position
+                        const positions = ['ZAG', 'MEI', 'ATA'];
+                        for (const position of positions) {
+                            // For each team, check if it already has a player in this position
+                            for (let teamIndex = 0; teamIndex < teams.length; teamIndex++) {
+                                const team = teams[teamIndex];
+                                
+                                // If team already has a player in this position, skip
+                                if (team.players.some(p => p.position === position)) {
+                                    continue;
+                                }
+                                
+                                // Find players of this position without restrictions
+                                const validPlayers = remainingPlayers.filter(p => 
+                                    p.position === position && 
+                                    !team.players.some(existingPlayer => 
+                                        this.playersHaveRestriction(existingPlayer.name, p.name)
+                                    )
+                                );
+                                
+                                // If we found a valid player, use it
+                                if (validPlayers.length > 0) {
+                                    const playerIndex = remainingPlayers.findIndex(p => p === validPlayers[0]);
+                                    const player = remainingPlayers.splice(playerIndex, 1)[0];
+                                    team.players.push(player);
+                                    team.totalLevel += player.level;
+                                } else {
+                                    // If no valid player, try to find any player of this position
+                                    const playerIndex = remainingPlayers.findIndex(p => p.position === position);
+                                    if (playerIndex !== -1) {
+                                        const player = remainingPlayers.splice(playerIndex, 1)[0];
+                                        team.players.push(player);
+                                        team.totalLevel += player.level;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Sort teams by level (ascending)
+                        teams.sort((a, b) => a.totalLevel - b.totalLevel);
+                        
+                        // Distribute remaining players to balance teams
+                        while (remainingPlayers.length > 0) {
+                            // Find team with lowest level
+                            const targetTeam = teams.reduce((prev, curr) => 
+                                prev.totalLevel < curr.totalLevel ? prev : curr
+                            );
+                            
+                            // Respect playersPerTeam
+                            if (targetTeam.players.length >= playersPerTeam) {
+                                // Find the next team that's not full
+                                const nextTeam = teams.find(team => team.players.length < playersPerTeam);
+                                if (nextTeam) {
+                                    this.addBestPlayerToTeam(nextTeam, remainingPlayers);
+                                } else {
+                                    // All teams are full, break the loop
+                                    break;
+                                }
+                            } else {
+                                this.addBestPlayerToTeam(targetTeam, remainingPlayers);
+                            }
+                            
+                            // Re-sort teams by level
+                            teams.sort((a, b) => a.totalLevel - b.totalLevel);
+                        }
+                        
+                        // Calculate balance score
+                        const avgTeamLevel = teams.reduce((sum, team) => sum + team.totalLevel, 0) / teams.length;
+                        const maxDeviation = Math.max(...teams.map(team => Math.abs(team.totalLevel - avgTeamLevel)));
+                        const maxPossibleDeviation = avgTeamLevel; // Theoretical max deviation
+                        
+                        const balanceScore = 1 - (maxDeviation / maxPossibleDeviation);
+                        
+                        // Calculate position balance score
+                        let positionBalanceScore = 0;
+                        for (const position of positions) {
+                            const positionCounts = teams.map(team => team.players.filter(p => p.position === position).length);
+                            const positionAvg = positionCounts.reduce((sum, count) => sum + count, 0) / teams.length;
+                            const positionDeviation = Math.max(...positionCounts.map(count => Math.abs(count - positionAvg)));
+                            const maxPossiblePositionDeviation = positionAvg + 1; // Theoretical max deviation
+                            
+                            positionBalanceScore += 1 - (positionDeviation / maxPossiblePositionDeviation);
+                        }
+                        positionBalanceScore /= positions.length; // Average across positions
+                        
+                        // Calculate restriction score (how well restrictions are respected)
+                        let restrictionViolations = 0;
+                        teams.forEach(team => {
+                            // Check each pair of players in the team for restrictions
+                            for (let i = 0; i < team.players.length; i++) {
+                                for (let j = i + 1; j < team.players.length; j++) {
+                                    if (this.playersHaveRestriction(team.players[i].name, team.players[j].name)) {
+                                        restrictionViolations++;
+                                    }
+                                }
+                            }
+                        });
+                        
+                        const restrictionScore = restrictionViolations === 0 ? 1 : 0;
+                        
+                        // Combine scores with weight
+                        const combinedScore = balanceScore * 0.6 + positionBalanceScore * 0.2 + restrictionScore * 0.2;
+                        
+                        // Ensure all teams have the same number of players up to playersPerTeam
+                        teams.forEach(team => {
+                            // Use Math.min to prevent teams from having more players than configured
+                            const targetSize = Math.min(playersPerTeam, Math.floor(availablePlayers.length / numberOfTeams));
+                            if (team.players.length > targetSize) {
+                                // Remove excess players
+                                team.players = team.players.slice(0, targetSize);
+                                team.totalLevel = team.players.reduce((sum, p) => sum + p.level, 0);
+                            }
+                        });
+                        
+                        // Check if this is the best try so far
+                        if (combinedScore > bestTry.balanceScore) {
+                            // Restore original team order
+                            teams.sort((a, b) => a.index - b.index);
+                            
+                            bestTry = {
+                                teams,
+                                balanceScore: combinedScore,
+                                positionBalanceScore,
+                                restrictionScore
+                            };
+                            
+                            // If balance is very good, we can stop early
+                            if (combinedScore > 0.95) {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Finalize progress bar
+                    this.elements.progressBar.style.width = '100%';
+                    this.elements.progressText.textContent = 'Sorteio concluído!';
+                    
+                    return bestTry;
+                },
+                
+                // Add best player to team considering restrictions
+                addBestPlayerToTeam(team, remainingPlayers) {
+                    // First, try to find a player without restrictions
+                    const validPlayers = remainingPlayers.filter(p => 
+                        !team.players.some(existingPlayer => 
+                            this.playersHaveRestriction(existingPlayer.name, p.name)
+                        )
+                    );
+                    
+                    if (validPlayers.length > 0) {
+                        // Get first valid player
+                        const playerIndex = remainingPlayers.findIndex(p => p === validPlayers[0]);
+                        const player = remainingPlayers.splice(playerIndex, 1)[0];
+                        team.players.push(player);
+                        team.totalLevel += player.level;
+                    } else {
+                        // If no valid player found, just get the next one
+                        const player = remainingPlayers.splice(0, 1)[0];
+                        team.players.push(player);
+                        team.totalLevel += player.level;
+                    }
+                },
+                
+                // Display teams in the UI
+                displayTeams(showNames = false) {
+                    if (!this.drawnTeams || this.drawnTeams.length === 0) {
+                        this.elements.drawResults.classList.add('hidden');
+                        this.elements.noDrawResults.classList.remove('hidden');
+                        this.elements.shareButtons.classList.add('hidden');
+                        return;
+                    }
+                    
+                    this.elements.teamsContainer.innerHTML = '';
+                    this.elements.drawResults.classList.remove('hidden');
+                    this.elements.noDrawResults.classList.add('hidden');
+                    this.namesRevealed = showNames;
+                    
+                    // Get starting teams
+                    const startingTeams = [...this.drawnTeams];
+                    if (startingTeams.length > 2) {
+                        startingTeams.sort(() => Math.random() - 0.5);
+                        this.startingTeams = startingTeams.slice(0, 2);
+                    } else {
+                        this.startingTeams = [...startingTeams];
+                    }
+                    
+                    // Display each team
+                    this.drawnTeams.forEach((team, index) => {
+                        const isStarting = this.startingTeams.includes(team);
+                        const positions = ['ZAG', 'MEI', 'ATA'];
+                        
+                        const teamCard = document.createElement('div');
+                        teamCard.className = `bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 ${isStarting ? 'border-2 border-green-500' : ''}`;
+                        
+                        // Calculate average level
+                        const avgLevel = team.players.length > 0 
+                            ? (team.totalLevel / team.players.length).toFixed(1) 
+                            : '0.0';
+                        
+                        let headerColor = '';
+                        if (index === 0) headerColor = 'bg-red-500 text-white';
+                        else if (index === 1) headerColor = 'bg-blue-500 text-white';
+                        else if (index === 2) headerColor = 'bg-green-500 text-white';
+                        else if (index === 3) headerColor = 'bg-yellow-500 text-white';
+                        
+                        teamCard.innerHTML = `
+                            <div class="p-4 ${headerColor} flex justify-between items-center">
+                                <h3 class="text-lg font-bold">${team.name}</h3>
+                                ${isStarting ? '<span class="bg-white text-green-600 px-2 py-1 rounded text-xs font-bold">Começa Jogando</span>' : ''}
+                            </div>
+                            <div class="p-4">
+                                <div class="grid grid-cols-3 gap-3 mb-4">
+                                    <div class="bg-gray-100 p-2 rounded text-center">
+                                        <p class="text-gray-500 text-xs">Jogadores</p>
+                                        <p class="text-xl font-bold">${team.players.length}</p>
+                                    </div>
+                                    <div class="bg-gray-100 p-2 rounded text-center">
+                                        <p class="text-gray-500 text-xs">Nível Total</p>
+                                        <p class="text-xl font-bold">${team.totalLevel.toFixed(1)}</p>
+                                    </div>
+                                    <div class="bg-gray-100 p-2 rounded text-center">
+                                        <p class="text-gray-500 text-xs">Média</p>
+                                        <p class="text-xl font-bold">${avgLevel}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    ${positions.map(pos => {
+                                        const posPlayers = team.players.filter(p => p.position === pos);
+                                        
+                                        let positionClass = '';
+                                        if (pos === 'ZAG') positionClass = 'bg-red-100 text-red-800';
+                                        else if (pos === 'MEI') positionClass = 'bg-green-100 text-green-800';
+                                        else if (pos === 'ATA') positionClass = 'bg-blue-100 text-blue-800';
+                                        
+                                        return `
+                                            <div>
+                                                <h4 class="text-sm font-medium mb-2">
+                                                    <span class="inline-block px-2 py-1 rounded-full text-xs ${positionClass}">${pos}</span>
+                                                    <span class="text-gray-500">(${posPlayers.length})</span>
+                                                </h4>
+                                                <ul class="space-y-2">
+                                                    ${posPlayers.map(player => {
+                                                        let playerDisplay = '';
+                                                        
+                                                        if (showNames) {
+                                                            let nameDisplay = player.name;
+                                                            if (player.star) nameDisplay += ' ⭐';
+                                                            if (player.weak) nameDisplay += ' <i class="fas fa-arrow-down text-red-600"></i>';
+                                                            
+                                                            playerDisplay = `
+                                                                <span class="font-medium">${nameDisplay}</span>
+                                                                <span class="text-gray-500 ml-2">(${player.level})</span>
+                                                            `;
+                                                        } else {
+                                                            playerDisplay = `
+                                                                <span class="font-medium bg-gray-200 px-3 py-1 rounded-lg animate-pulse-slow">
+                                                                    Jogador ${player.star ? '⭐' : player.weak ? '<i class="fas fa-arrow-down text-red-600"></i>' : ''}
+                                                                </span>
+                                                                <span class="text-gray-500 ml-2">(${player.level})</span>
+                                                            `;
+                                                        }
+                                                        
+                                                        return `<li class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm">${playerDisplay}</li>`;
+                                                    }).join('')}
+                                                </ul>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                        
+                        this.elements.teamsContainer.appendChild(teamCard);
+                    });
+                },
+                
+                // Reveal player names
+                revealPlayerNames() {
+                    this.elements.acceptBalanceBtn.classList.add('hidden');
+                    this.elements.tryAgainBtn.classList.add('hidden');
+                    this.elements.shareButtons.classList.remove('hidden');
+                    this.displayTeams(true);
+                },
+                
+                // Format draw results for sharing
+                formatDrawResultsForShare() {
+                    if (!this.drawnTeams || this.drawnTeams.length === 0) {
+                        return 'Nenhum sorteio realizado ainda.';
+                    }
+                    
+                    let message = '⚽ *SORTEIO DE TIMES* ⚽\n\n';
+                    
+                    this.drawnTeams.forEach((team, index) => {
+                        const isStarting = this.startingTeams.includes(team);
+                        
+                        message += `*_${team.name}_* ${isStarting ? '(Começa jogando)' : ''}\n`;
+                        message += `👥 Jogadores: ${team.players.length}\n`;
+                        message += `💪 Nível Total: ${team.totalLevel.toFixed(1)}\n`;
+                        message += `⚖️ Média Técnica: ${(team.totalLevel / team.players.length).toFixed(1)}\n\n`;
+                        
+                        const positions = [
+                            { code: 'ZAG', emoji: '🛡️' },
+                            { code: 'MEI', emoji: '⚙️' },
+                            { code: 'ATA', emoji: '⚡' }
+                        ];
+                        
+                        positions.forEach(pos => {
+                            const posPlayers = team.players.filter(p => p.position === pos.code);
+                            if (posPlayers.length > 0) {
+                                message += `${pos.emoji} *${pos.code}:* `;
+                                // Just the names, without level or indicators
+                                message += posPlayers.map(p => p.name).join(', ');
+                                message += '\n';
+                            }
+                        });
+                        
+                        message += '\n';
+                    });
+                    
+                    if (this.startingTeams.length === 2) {
+                        message += '🏆 *Começa Jogando:* ';
+                        message += this.startingTeams.map(t => t.name).join(' vs ');
+                        message += '\n\n';
+                    }
+                    
+                    message += '🔄 Sorteado no Pelada Manager';
+                    
+                    return message;
+                },
+                
+                // Format players for sharing
+                formatPlayersForShare() {
+                    if (this.players.length === 0) {
+                        return 'Nenhum jogador cadastrado ainda.';
+                    }
+                    
+                    let message = '⚽ *LISTA DE JOGADORES* ⚽\n\n';
+                    
+                    const totalPlayers = this.players.length;
+                    const availablePlayers = this.players.filter(p => p.available).length;
+                    
+                    message += `👥 *Total de Jogadores:* ${totalPlayers}\n`;
+                    message += `✅ *Disponíveis:* ${availablePlayers}\n\n`;
+                    
+                    const positions = [
+                        { code: 'ZAG', emoji: '🛡️' },
+                        { code: 'MEI', emoji: '⚙️' },
+                        { code: 'ATA', emoji: '⚡' }
+                    ];
+                    
+                    positions.forEach(pos => {
+                        const posPlayers = this.players.filter(p => p.position === pos.code);
+                        if (posPlayers.length > 0) {
+                            message += `${pos.emoji} *${pos.code} (${posPlayers.length}):*\n`;
+                            
+                            // Sort by name
+                            const sortedPlayers = [...posPlayers].sort((a, b) => a.name.localeCompare(b.name));
+                            
+                            sortedPlayers.forEach(p => {
+                                let name = p.name;
+                                if (p.star) name += ' ⭐';
+                                if (p.weak) name += ' ↓';
+                                
+                                message += `   ${name} (${p.level})`;
+                                message += p.available ? ' ✅' : ' ❌';
+                                message += '\n';
+                            });
+                            
+                            message += '\n';
+                        }
+                    });
+                    
+                    message += '🔄 Gerado no Pelada Manager';
+                    
+                    return message;
+                },
+                
+                // Share via WhatsApp
+                shareViaWhatsApp(message) {
+                    const encodedMessage = encodeURIComponent(message);
+                    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                },
+                
+                // Switch tab
+                switchTab(tabName) {
+                    // Update tab buttons
+                    this.elements.tabButtons.forEach(button => {
+                        if (button.getAttribute('data-tab') === tabName) {
+                            button.classList.add('border-primary', 'text-primary');
+                            button.classList.remove('border-transparent', 'hover:text-primary');
+                        } else {
+                            button.classList.remove('border-primary', 'text-primary');
+                            button.classList.add('border-transparent', 'hover:text-primary');
+                        }
+                    });
+                    
+                    // Update tab contents
+                    this.elements.tabContents.forEach(content => {
+                        if (content.id === `${tabName}-tab`) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                },
+                
+                // Load demo players
+                loadDemoPlayers() {
+                    if (this.players.length === 0) {
+                        const demoPlayers = [
+                            { id: 1, name: 'Carlos', position: 'ZAG', level: 4.5, available: true, star: true, weak: false },
+                            { id: 2, name: 'Rafael', position: 'ZAG', level: 3.5, available: true, star: false, weak: false },
+                            { id: 3, name: 'Márcio', position: 'ZAG', level: 3.0, available: true, star: false, weak: false },
+                            { id: 4, name: 'Guilherme', position: 'ZAG', level: 2.5, available: true, star: false, weak: false },
+                            { id: 5, name: 'Eduardo', position: 'MEI', level: 4.0, available: true, star: true, weak: false },
+                            { id: 6, name: 'Lucas', position: 'MEI', level: 3.5, available: true, star: false, weak: false },
+                            { id: 7, name: 'André', position: 'MEI', level: 3.5, available: true, star: false, weak: false },
+                            { id: 8, name: 'Diego', position: 'MEI', level: 3.0, available: true, star: false, weak: false },
+                            { id: 9, name: 'Henrique', position: 'MEI', level: 2.0, available: true, star: false, weak: true },
+                            { id: 10, name: 'Ricardo', position: 'ATA', level: 4.5, available: true, star: true, weak: false },
+                            { id: 11, name: 'Fernando', position: 'ATA', level: 4.0, available: true, star: false, weak: false },
+                            { id: 12, name: 'Gabriel', position: 'ATA', level: 3.0, available: true, star: false, weak: false },
+                            { id: 13, name: 'Bruno', position: 'ATA', level: 2.0, available: true, star: false, weak: true },
+                            { id: 14, name: 'Thiago', position: 'ATA', level: 1.5, available: false, star: false, weak: false }
+                        ];
+                        
+                        this.players = demoPlayers;
+                        this.currentId = 15;
+                        this.savePlayers();
+                        
+                        // Add a demo restriction
+                        this.playerRestrictions = [
+                            { id: 1, player1: 'Carlos', player2: 'Ricardo' },
+                            { id: 2, player1: 'Eduardo', player2: 'Fernando' }
+                        ];
+                        this.saveRestrictions();
+                        
+                        this.updateStats();
+                        this.updatePlayerList();
+                        this.updateRestrictionPlayersDropdown();
+                        this.updateRestrictionsList();
+                    }
+                },
+                
+                // Show toast notification
+                showToast(message, type = 'success') {
+                    // Set icon and background color based on type
+                    let iconClass = '';
+                    let bgClass = '';
+                    
+                    if (type === 'success') {
+                        iconClass = 'fa-check-circle text-green-400';
+                        bgClass = 'bg-green-800';
+                    } else if (type === 'error') {
+                        iconClass = 'fa-exclamation-circle text-red-400';
+                        bgClass = 'bg-red-800';
+                    } else if (type === 'info') {
+                        iconClass = 'fa-info-circle text-blue-400';
+                        bgClass = 'bg-blue-800';
+                    } else if (type === 'warning') {
+                        iconClass = 'fa-exclamation-triangle text-yellow-400';
+                        bgClass = 'bg-yellow-800';
+                    }
+                    
+                    // Update toast content
+                    this.elements.toastIcon.innerHTML = `<i class="fas ${iconClass}"></i>`;
+                    this.elements.toastMessage.textContent = message;
+                    this.elements.toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${bgClass} text-white transform transition-transform duration-300 flex items-center z-50`;
+                    
+                    // Show toast
+                    setTimeout(() => {
+                        this.elements.toast.classList.remove('translate-y-full');
+                    }, 10);
+                    
+                    // Hide toast after 3 seconds
+                    setTimeout(() => {
+                        this.elements.toast.classList.add('translate-y-full');
+                    }, 3000);
+                },
+                
+                // Utility: Shuffle array
+                shuffleArray(array) {
+                    const newArray = [...array];
+                    for (let i = newArray.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+                    }
+                    return newArray;
+                },
+                
+                // Update UI
+                updateUI() {
+                    this.updatePlayerList();
+                    this.updateTeamNamesInputs();
+                    this.updateRestrictionsList();
+                }
+            };
+            
+            // Initialize the app
+            app.init();
+        });
+    </script>
+</body>
+</html>
