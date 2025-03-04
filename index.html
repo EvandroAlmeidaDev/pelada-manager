@@ -1401,6 +1401,13 @@
                     const weakPlayers = availablePlayers.filter(p => p.weak && !p.star);
                     const regularPlayers = availablePlayers.filter(p => !p.star && !p.weak);
                     
+                    // Count available players by position
+                    const positions = ['ZAG', 'MEI', 'ATA'];
+                    const availableByPosition = {};
+                    positions.forEach(pos => {
+                        availableByPosition[pos] = availablePlayers.filter(p => p.position === pos).length;
+                    });
+                    
                     // Initialize best result
                     let bestTry = {
                         teams: [],
@@ -1421,7 +1428,8 @@
                             name,
                             players: [],
                             totalLevel: 0,
-                            index
+                            index,
+                            positions: {ZAG: 0, MEI: 0, ATA: 0} // Track number of players per position
                         }));
                         
                         // Distribute stars first, one per team if possible
@@ -1434,6 +1442,7 @@
                             for (let i = 0; i < Math.min(teams.length, availableStars.length); i++) {
                                 teams[i].players.push(availableStars[i]);
                                 teams[i].totalLevel += availableStars[i].level;
+                                teams[i].positions[availableStars[i].position]++;
                             }
                             
                             // Put remaining stars to the teams with lowest levels
@@ -1464,14 +1473,17 @@
                                             
                                             alternateTeam.players.push(starPlayer);
                                             alternateTeam.totalLevel += starPlayer.level;
+                                            alternateTeam.positions[starPlayer.position]++;
                                         } else {
                                             // If all teams have restrictions, still add to lowest level team
                                             targetTeam.players.push(starPlayer);
                                             targetTeam.totalLevel += starPlayer.level;
+                                            targetTeam.positions[starPlayer.position]++;
                                         }
                                     } else {
                                         targetTeam.players.push(starPlayer);
                                         targetTeam.totalLevel += starPlayer.level;
+                                        targetTeam.positions[starPlayer.position]++;
                                     }
                                 }
                             }
@@ -1509,14 +1521,17 @@
                                         
                                         alternateTeam.players.push(weakPlayer);
                                         alternateTeam.totalLevel += weakPlayer.level;
+                                        alternateTeam.positions[weakPlayer.position]++;
                                     } else {
                                         // If all teams have restrictions, still add to highest level team
                                         teams[i].players.push(weakPlayer);
                                         teams[i].totalLevel += weakPlayer.level;
+                                        teams[i].positions[weakPlayer.position]++;
                                     }
                                 } else {
                                     teams[i].players.push(weakPlayer);
                                     teams[i].totalLevel += weakPlayer.level;
+                                    teams[i].positions[weakPlayer.position]++;
                                 }
                             }
                             
@@ -1552,60 +1567,71 @@
                                             
                                             alternateTeam.players.push(weakPlayer);
                                             alternateTeam.totalLevel += weakPlayer.level;
+                                            alternateTeam.positions[weakPlayer.position]++;
                                         } else {
                                             // If all teams have restrictions, still add to highest level team
                                             targetTeam.players.push(weakPlayer);
                                             targetTeam.totalLevel += weakPlayer.level;
+                                            targetTeam.positions[weakPlayer.position]++;
                                         }
                                     } else {
                                         targetTeam.players.push(weakPlayer);
                                         targetTeam.totalLevel += weakPlayer.level;
+                                        targetTeam.positions[weakPlayer.position]++;
                                     }
                                 }
                             }
                         }
                         
                         // Shuffle regular players
-                        let remainingPlayers = this.shuffleArray([...regularPlayers]);
+                        let remainingPlayers = [...regularPlayers];
                         
-                        // First, try to ensure each team has at least one player of each position
-                        const positions = ['ZAG', 'MEI', 'ATA'];
+                        // PRIMEIRO PASSO: Distribuir jogadores por posição se houver suficientes
                         for (const position of positions) {
-                            // For each team, check if it already has a player in this position
-                            for (let teamIndex = 0; teamIndex < teams.length; teamIndex++) {
-                                const team = teams[teamIndex];
+                            // Verificar se há jogadores suficientes desta posição
+                            if (availableByPosition[position] >= numberOfTeams) {
+                                // Primeiro, filtrar jogadores dessa posição dos restantes
+                                const positionPlayers = remainingPlayers.filter(p => p.position === position);
                                 
-                                // If team already has a player in this position, skip
-                                if (team.players.some(p => p.position === position)) {
-                                    continue;
-                                }
-                                
-                                // Find players of this position without restrictions
-                                const validPlayers = remainingPlayers.filter(p => 
-                                    p.position === position && 
-                                    !team.players.some(existingPlayer => 
-                                        this.playersHaveRestriction(existingPlayer.name, p.name)
-                                    )
-                                );
-                                
-                                // If we found a valid player, use it
-                                if (validPlayers.length > 0) {
-                                    const playerIndex = remainingPlayers.findIndex(p => p === validPlayers[0]);
-                                    const player = remainingPlayers.splice(playerIndex, 1)[0];
-                                    team.players.push(player);
-                                    team.totalLevel += player.level;
-                                } else {
-                                    // If no valid player, try to find any player of this position
-                                    const playerIndex = remainingPlayers.findIndex(p => p.position === position);
-                                    if (playerIndex !== -1) {
-                                        const player = remainingPlayers.splice(playerIndex, 1)[0];
+                                // Para cada time, verificar se já tem jogador nessa posição
+                                for (const team of teams) {
+                                    // Se já tem jogador nessa posição, continuar
+                                    if (team.positions[position] > 0) continue;
+                                    
+                                    // Procurar jogador disponível que não tenha restrição
+                                    const availablePlayer = positionPlayers.find(player => 
+                                        !team.players.some(p => this.playersHaveRestriction(p.name, player.name))
+                                    );
+                                    
+                                    if (availablePlayer) {
+                                        // Adicionar jogador ao time
+                                        team.players.push(availablePlayer);
+                                        team.totalLevel += availablePlayer.level;
+                                        team.positions[position]++;
+                                        
+                                        // Remover jogador das listas
+                                        remainingPlayers = remainingPlayers.filter(p => p !== availablePlayer);
+                                        const index = positionPlayers.indexOf(availablePlayer);
+                                        if (index > -1) positionPlayers.splice(index, 1);
+                                    } else if (positionPlayers.length > 0) {
+                                        // Se não encontrou sem restrição, usar o primeiro disponível
+                                        const player = positionPlayers[0];
                                         team.players.push(player);
                                         team.totalLevel += player.level;
+                                        team.positions[position]++;
+                                        
+                                        // Remover jogador das listas
+                                        remainingPlayers = remainingPlayers.filter(p => p !== player);
+                                        positionPlayers.shift();
                                     }
                                 }
                             }
                         }
                         
+                        // Shuffle os jogadores restantes
+                        remainingPlayers = this.shuffleArray(remainingPlayers);
+                        
+                        // SEGUNDO PASSO: Distribuir os restantes equilibrando por nível
                         // Sort teams by level (ascending)
                         teams.sort((a, b) => a.totalLevel - b.totalLevel);
                         
@@ -1634,6 +1660,81 @@
                             teams.sort((a, b) => a.totalLevel - b.totalLevel);
                         }
                         
+                        // TERCEIRO PASSO: Verificar se todos os times têm jogadores de todas as posições
+                        // Só precisamos fazer isso se houver jogadores suficientes de cada posição
+                        for (const position of positions) {
+                            if (availableByPosition[position] >= numberOfTeams) {
+                                // Verifique quais times não têm jogadores desta posição
+                                const teamsWithoutPosition = teams.filter(team => team.positions[position] === 0);
+                                
+                                // Se não houver times sem esta posição, pule para a próxima
+                                if (teamsWithoutPosition.length === 0) continue;
+                                
+                                // Para cada time sem jogador desta posição
+                                for (const teamWithoutPosition of teamsWithoutPosition) {
+                                    // Encontre times com mais de um jogador desta posição
+                                    const teamsWithExtra = teams.filter(team => 
+                                        team !== teamWithoutPosition && team.positions[position] > 1
+                                    );
+                                    
+                                    if (teamsWithExtra.length > 0) {
+                                        // Escolha um time com jogador extra
+                                        const donorTeam = teamsWithExtra[0];
+                                        
+                                        // Encontre o jogador desta posição para transferir
+                                        const playerToTransfer = donorTeam.players.find(p => p.position === position);
+                                        
+                                        if (playerToTransfer) {
+                                            // Verifique restrições
+                                            const hasRestriction = teamWithoutPosition.players.some(p => 
+                                                this.playersHaveRestriction(p.name, playerToTransfer.name)
+                                            );
+                                            
+                                            if (!hasRestriction) {
+                                                // Remova o jogador do time doador
+                                                donorTeam.players = donorTeam.players.filter(p => p !== playerToTransfer);
+                                                donorTeam.totalLevel -= playerToTransfer.level;
+                                                donorTeam.positions[position]--;
+                                                
+                                                // Adicione ao time receptor
+                                                teamWithoutPosition.players.push(playerToTransfer);
+                                                teamWithoutPosition.totalLevel += playerToTransfer.level;
+                                                teamWithoutPosition.positions[position]++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Ensure all teams have the same number of players up to playersPerTeam
+                        const targetPlayers = Math.min(playersPerTeam, Math.floor(availablePlayers.length / numberOfTeams));
+                        
+                        // First, make sure no team exceeds the target
+                        teams.forEach(team => {
+                            if (team.players.length > targetPlayers) {
+                                const excessPlayers = team.players.splice(targetPlayers);
+                                team.totalLevel = team.players.reduce((sum, p) => sum + p.level, 0);
+                                
+                                // Update position counts
+                                team.positions = {ZAG: 0, MEI: 0, ATA: 0};
+                                team.players.forEach(p => team.positions[p.position]++);
+                                
+                                // Put excess players back in the pool for redistribution
+                                excessPlayers.forEach(p => remainingPlayers.push(p));
+                            }
+                        });
+                        
+                        // Then, fill up any teams below the target
+                        while (remainingPlayers.length > 0) {
+                            // Find team with fewer players
+                            const teamToFill = teams.find(team => team.players.length < targetPlayers);
+                            if (!teamToFill) break;
+                            
+                            // Add best player to this team
+                            this.addBestPlayerToTeam(teamToFill, remainingPlayers);
+                        }
+                        
                         // Calculate balance score
                         const avgTeamLevel = teams.reduce((sum, team) => sum + team.totalLevel, 0) / teams.length;
                         const maxDeviation = Math.max(...teams.map(team => Math.abs(team.totalLevel - avgTeamLevel)));
@@ -1644,7 +1745,7 @@
                         // Calculate position balance score
                         let positionBalanceScore = 0;
                         for (const position of positions) {
-                            const positionCounts = teams.map(team => team.players.filter(p => p.position === position).length);
+                            const positionCounts = teams.map(team => team.positions[position]);
                             const positionAvg = positionCounts.reduce((sum, count) => sum + count, 0) / teams.length;
                             const positionDeviation = Math.max(...positionCounts.map(count => Math.abs(count - positionAvg)));
                             const maxPossiblePositionDeviation = positionAvg + 1; // Theoretical max deviation
@@ -1668,22 +1769,25 @@
                         
                         const restrictionScore = restrictionViolations === 0 ? 1 : 0;
                         
-                        // Combine scores with weight
-                        const combinedScore = balanceScore * 0.6 + positionBalanceScore * 0.2 + restrictionScore * 0.2;
-                        
-                        // Ensure all teams have the same number of players up to playersPerTeam
-                        teams.forEach(team => {
-                            // Use Math.min to prevent teams from having more players than configured
-                            const targetSize = Math.min(playersPerTeam, Math.floor(availablePlayers.length / numberOfTeams));
-                            if (team.players.length > targetSize) {
-                                // Remove excess players
-                                team.players = team.players.slice(0, targetSize);
-                                team.totalLevel = team.players.reduce((sum, p) => sum + p.level, 0);
+                        // Check if all teams have players in all positions (when there are enough available)
+                        let positionCoverageScore = 1;
+                        for (const position of positions) {
+                            if (availableByPosition[position] >= numberOfTeams) {
+                                // If there are enough players in this position, every team should have at least one
+                                const teamsWithoutPosition = teams.filter(team => team.positions[position] === 0);
+                                if (teamsWithoutPosition.length > 0) {
+                                    positionCoverageScore = 0;
+                                    break;
+                                }
                             }
-                        });
+                        }
+                        
+                        // Combine scores with weight - adding position coverage as a high priority
+                        const combinedScore = balanceScore * 0.3 + positionBalanceScore * 0.2 + restrictionScore * 0.2 + positionCoverageScore * 0.3;
                         
                         // Check if this is the best try so far
-                        if (combinedScore > bestTry.balanceScore) {
+                        if (combinedScore > bestTry.balanceScore || 
+                            (positionCoverageScore > 0 && bestTry.balanceScore === 0)) {
                             // Restore original team order
                             teams.sort((a, b) => a.index - b.index);
                             
@@ -1691,11 +1795,12 @@
                                 teams,
                                 balanceScore: combinedScore,
                                 positionBalanceScore,
-                                restrictionScore
+                                restrictionScore,
+                                positionCoverageScore
                             };
                             
-                            // If balance is very good, we can stop early
-                            if (combinedScore > 0.95) {
+                            // If we achieved perfect position coverage and good balance, we can stop early
+                            if (positionCoverageScore === 1 && balanceScore > 0.9) {
                                 break;
                             }
                         }
@@ -1710,7 +1815,43 @@
                 
                 // Add best player to team considering restrictions
                 addBestPlayerToTeam(team, remainingPlayers) {
-                    // First, try to find a player without restrictions
+                    // First, check if team needs any specific position
+                    const positions = ['ZAG', 'MEI', 'ATA'];
+                    for (const position of positions) {
+                        if (team.positions[position] === 0) {
+                            // Try to find a player of this position without restrictions
+                            const validPlayers = remainingPlayers.filter(p => 
+                                p.position === position && 
+                                !team.players.some(existingPlayer => 
+                                    this.playersHaveRestriction(existingPlayer.name, p.name)
+                                )
+                            );
+                            
+                            if (validPlayers.length > 0) {
+                                // Remove and add player
+                                const playerIndex = remainingPlayers.findIndex(p => p === validPlayers[0]);
+                                const player = remainingPlayers.splice(playerIndex, 1)[0];
+                                team.players.push(player);
+                                team.totalLevel += player.level;
+                                team.positions[position]++;
+                                return;
+                            }
+                            
+                            // If no valid player found, try any player of this position
+                            const positionPlayers = remainingPlayers.filter(p => p.position === position);
+                            if (positionPlayers.length > 0) {
+                                const playerIndex = remainingPlayers.findIndex(p => p === positionPlayers[0]);
+                                const player = remainingPlayers.splice(playerIndex, 1)[0];
+                                team.players.push(player);
+                                team.totalLevel += player.level;
+                                team.positions[position]++;
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // If team has all positions or no specific position player is available,
+                    // find a player without restrictions
                     const validPlayers = remainingPlayers.filter(p => 
                         !team.players.some(existingPlayer => 
                             this.playersHaveRestriction(existingPlayer.name, p.name)
@@ -1723,11 +1864,13 @@
                         const player = remainingPlayers.splice(playerIndex, 1)[0];
                         team.players.push(player);
                         team.totalLevel += player.level;
-                    } else {
+                        team.positions[player.position]++;
+                    } else if (remainingPlayers.length > 0) {
                         // If no valid player found, just get the next one
                         const player = remainingPlayers.splice(0, 1)[0];
                         team.players.push(player);
                         team.totalLevel += player.level;
+                        team.positions[player.position]++;
                     }
                 },
                 
@@ -1988,7 +2131,6 @@
     
                     localStorage.setItem('demoPlayersLoaded', 'true');
                     return;
-                
                 },
                 
                 // Show toast notification
