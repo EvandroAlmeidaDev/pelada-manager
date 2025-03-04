@@ -1412,11 +1412,10 @@
                     let bestTry = {
                         teams: [],
                         balanceScore: 0,
-                        positionBalanceScore: 0,
-                        restrictionScore: 0
+                        levelDeviation: Number.MAX_VALUE // Armazenar o desvio máximo para avaliar equilíbrio
                     };
                     
-                    const maxTries = 50;
+                    const maxTries = 100; // Aumentando o número de tentativas para encontrar um equilíbrio melhor
                     
                     // Try multiple times to find the best balance
                     for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
@@ -1628,39 +1627,40 @@
                             }
                         }
                         
-                        // Shuffle os jogadores restantes
+                        // Shuffle os jogadores restantes para aumentar aleatoriedade
                         remainingPlayers = this.shuffleArray(remainingPlayers);
                         
                         // SEGUNDO PASSO: Distribuir os restantes equilibrando por nível
-                        // Sort teams by level (ascending)
-                        teams.sort((a, b) => a.totalLevel - b.totalLevel);
+                        // Calcular média-alvo (nível total esperado para cada time)
+                        const totalPlayersLevel = availablePlayers.reduce((sum, p) => sum + p.level, 0);
+                        const targetAvg = totalPlayersLevel / numberOfTeams;
                         
-                        // Distribute remaining players to balance teams
+                        // Distribuir os jogadores restantes com base na proximidade da média
                         while (remainingPlayers.length > 0) {
-                            // Find team with lowest level
-                            const targetTeam = teams.reduce((prev, curr) => 
-                                prev.totalLevel < curr.totalLevel ? prev : curr
+                            // Ordenar times pelo desvio em relação à média alvo (do maior desvio para o menor)
+                            teams.sort((a, b) => 
+                                Math.abs(targetAvg - a.totalLevel) > Math.abs(targetAvg - b.totalLevel) ? -1 : 1
                             );
                             
-                            // Respect playersPerTeam
+                            // Pegar o time que está mais longe da média
+                            const targetTeam = teams[0];
+                            
+                            // Verificar se o time já está completo
                             if (targetTeam.players.length >= playersPerTeam) {
-                                // Find the next team that's not full
+                                // Se estiver, procurar o próximo time não completo
                                 const nextTeam = teams.find(team => team.players.length < playersPerTeam);
                                 if (nextTeam) {
-                                    this.addBestPlayerToTeam(nextTeam, remainingPlayers);
+                                    this.addOptimalPlayerToTeam(nextTeam, remainingPlayers, targetAvg);
                                 } else {
-                                    // All teams are full, break the loop
+                                    // Todos os times estão completos, encerrar o loop
                                     break;
                                 }
                             } else {
-                                this.addBestPlayerToTeam(targetTeam, remainingPlayers);
+                                this.addOptimalPlayerToTeam(targetTeam, remainingPlayers, targetAvg);
                             }
-                            
-                            // Re-sort teams by level
-                            teams.sort((a, b) => a.totalLevel - b.totalLevel);
                         }
                         
-                        // TERCEIRO PASSO: Verificar se todos os times têm jogadores de todas as posições
+                        // TERCEIRO PASSO: Verificar e corrigir as posições quando necessário
                         // Só precisamos fazer isso se houver jogadores suficientes de cada posição
                         for (const position of positions) {
                             if (availableByPosition[position] >= numberOfTeams) {
@@ -1707,57 +1707,111 @@
                             }
                         }
                         
-                        // Ensure all teams have the same number of players up to playersPerTeam
+                        // PASSO FINAL: Garantir que todos os times tenham o mesmo número de jogadores
                         const targetPlayers = Math.min(playersPerTeam, Math.floor(availablePlayers.length / numberOfTeams));
                         
-                        // First, make sure no team exceeds the target
+                        // Primeiro, garantir que nenhum time exceda o número alvo
                         teams.forEach(team => {
                             if (team.players.length > targetPlayers) {
                                 const excessPlayers = team.players.splice(targetPlayers);
                                 team.totalLevel = team.players.reduce((sum, p) => sum + p.level, 0);
                                 
-                                // Update position counts
+                                // Atualizar contagem de posições
                                 team.positions = {ZAG: 0, MEI: 0, ATA: 0};
                                 team.players.forEach(p => team.positions[p.position]++);
                                 
-                                // Put excess players back in the pool for redistribution
+                                // Devolver jogadores excedentes para redistribuição
                                 excessPlayers.forEach(p => remainingPlayers.push(p));
                             }
                         });
                         
-                        // Then, fill up any teams below the target
-                        while (remainingPlayers.length > 0) {
-                            // Find team with fewer players
-                            const teamToFill = teams.find(team => team.players.length < targetPlayers);
-                            if (!teamToFill) break;
+                        // Depois, preencher times abaixo do alvo
+                        if (remainingPlayers.length > 0) {
+                            // Ordenar times por número de jogadores (crescente)
+                            teams.sort((a, b) => a.players.length - b.players.length);
                             
-                            // Add best player to this team
-                            this.addBestPlayerToTeam(teamToFill, remainingPlayers);
+                            while (remainingPlayers.length > 0) {
+                                // Encontrar time com menos jogadores
+                                const teamToFill = teams.find(team => team.players.length < targetPlayers);
+                                if (!teamToFill) break;
+                                
+                                // Adicionar jogador ótimo para este time
+                                this.addOptimalPlayerToTeam(teamToFill, remainingPlayers, targetAvg);
+                                
+                                // Reordenar times
+                                teams.sort((a, b) => a.players.length - b.players.length);
+                            }
                         }
                         
-                        // Calculate balance score
+                        // FASE DE OTIMIZAÇÃO: Tentar trocas entre times para melhorar o equilíbrio
+                        let improved = true;
+                        let optimizationIterations = 0;
+                        const maxOptimizationIterations = 20;
+                        
+                        while (improved && optimizationIterations < maxOptimizationIterations) {
+                            improved = false;
+                            optimizationIterations++;
+                            
+                            // Calcular média atual de cada time
+                            const teamAvgs = teams.map(team => team.totalLevel / team.players.length);
+                            const overallAvg = teamAvgs.reduce((sum, avg) => sum + avg, 0) / teams.length;
+                            
+                            // Ordenar times por desvio em relação à média geral (do maior para o menor)
+                            const sortedTeams = [...teams].sort((a, b) => {
+                                const aAvg = a.totalLevel / a.players.length;
+                                const bAvg = b.totalLevel / b.players.length;
+                                return Math.abs(overallAvg - aAvg) > Math.abs(overallAvg - bAvg) ? -1 : 1;
+                            });
+                            
+                            // Tentar trocar jogadores entre times para melhorar o equilíbrio
+                            for (let i = 0; i < sortedTeams.length && !improved; i++) {
+                                const teamA = sortedTeams[i];
+                                const avgA = teamA.totalLevel / teamA.players.length;
+                                const diffA = avgA - overallAvg;
+                                
+                                for (let j = 0; j < sortedTeams.length && !improved; j++) {
+                                    if (i === j) continue;
+                                    
+                                    const teamB = sortedTeams[j];
+                                    const avgB = teamB.totalLevel / teamB.players.length;
+                                    const diffB = avgB - overallAvg;
+                                    
+                                    // Se os times estão em lados opostos da média, podemos tentar trocar
+                                    if ((diffA > 0 && diffB < 0) || (diffA < 0 && diffB > 0)) {
+                                        // Tentar encontrar uma troca que melhore o equilíbrio
+                                        improved = this.tryPlayerSwap(teamA, teamB, overallAvg, positions, availableByPosition);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Calcular pontuação final de equilíbrio
                         const avgTeamLevel = teams.reduce((sum, team) => sum + team.totalLevel, 0) / teams.length;
-                        const maxDeviation = Math.max(...teams.map(team => Math.abs(team.totalLevel - avgTeamLevel)));
-                        const maxPossibleDeviation = avgTeamLevel; // Theoretical max deviation
+                        const avgPerPlayer = teams.map(team => team.totalLevel / team.players.length);
+                        const maxDeviation = Math.max(...teams.map(team => 
+                            Math.abs(team.totalLevel / team.players.length - avgTeamLevel / teams[0].players.length)
+                        ));
                         
-                        const balanceScore = 1 - (maxDeviation / maxPossibleDeviation);
+                        // Um desvio menor é melhor
+                        const balanceScore = 1 - (maxDeviation / (avgTeamLevel / teams[0].players.length));
                         
-                        // Calculate position balance score
+                        // Calcular pontuação de posição
                         let positionBalanceScore = 0;
                         for (const position of positions) {
-                            const positionCounts = teams.map(team => team.positions[position]);
-                            const positionAvg = positionCounts.reduce((sum, count) => sum + count, 0) / teams.length;
-                            const positionDeviation = Math.max(...positionCounts.map(count => Math.abs(count - positionAvg)));
-                            const maxPossiblePositionDeviation = positionAvg + 1; // Theoretical max deviation
-                            
-                            positionBalanceScore += 1 - (positionDeviation / maxPossiblePositionDeviation);
+                            if (availableByPosition[position] >= numberOfTeams) {
+                                // Se há jogadores suficientes, verificar se todos os times têm pelo menos um
+                                const allTeamsHavePosition = teams.every(team => team.positions[position] > 0);
+                                if (allTeamsHavePosition) {
+                                    positionBalanceScore += 1;
+                                }
+                            }
                         }
-                        positionBalanceScore /= positions.length; // Average across positions
+                        positionBalanceScore /= positions.length;
                         
-                        // Calculate restriction score (how well restrictions are respected)
+                        // Calcular pontuação de restrições
                         let restrictionViolations = 0;
                         teams.forEach(team => {
-                            // Check each pair of players in the team for restrictions
+                            // Verificar cada par de jogadores no time para restrições
                             for (let i = 0; i < team.players.length; i++) {
                                 for (let j = i + 1; j < team.players.length; j++) {
                                     if (this.playersHaveRestriction(team.players[i].name, team.players[j].name)) {
@@ -1769,26 +1823,18 @@
                         
                         const restrictionScore = restrictionViolations === 0 ? 1 : 0;
                         
-                        // Check if all teams have players in all positions (when there are enough available)
-                        let positionCoverageScore = 1;
-                        for (const position of positions) {
-                            if (availableByPosition[position] >= numberOfTeams) {
-                                // If there are enough players in this position, every team should have at least one
-                                const teamsWithoutPosition = teams.filter(team => team.positions[position] === 0);
-                                if (teamsWithoutPosition.length > 0) {
-                                    positionCoverageScore = 0;
-                                    break;
-                                }
-                            }
-                        }
+                        // Calcular desvio padrão das médias por jogador (quanto menor, melhor)
+                        const avgOfAvgs = avgPerPlayer.reduce((sum, avg) => sum + avg, 0) / teams.length;
+                        const varianceOfAvgs = avgPerPlayer.reduce((sum, avg) => sum + Math.pow(avg - avgOfAvgs, 2), 0) / teams.length;
+                        const stdDevOfAvgs = Math.sqrt(varianceOfAvgs);
                         
-                        // Combine scores with weight - adding position coverage as a high priority
-                        const combinedScore = balanceScore * 0.3 + positionBalanceScore * 0.2 + restrictionScore * 0.2 + positionCoverageScore * 0.3;
+                        // Pontuação combinada - dando maior peso ao equilíbrio de nível
+                        const combinedScore = balanceScore * 0.5 + positionBalanceScore * 0.3 + restrictionScore * 0.2;
                         
-                        // Check if this is the best try so far
+                        // Se for a melhor pontuação até agora ou tiver o menor desvio-padrão
                         if (combinedScore > bestTry.balanceScore || 
-                            (positionCoverageScore > 0 && bestTry.balanceScore === 0)) {
-                            // Restore original team order
+                            (combinedScore === bestTry.balanceScore && stdDevOfAvgs < bestTry.levelDeviation)) {
+                            // Restaurar a ordem original dos times
                             teams.sort((a, b) => a.index - b.index);
                             
                             bestTry = {
@@ -1796,82 +1842,245 @@
                                 balanceScore: combinedScore,
                                 positionBalanceScore,
                                 restrictionScore,
-                                positionCoverageScore
+                                levelDeviation: stdDevOfAvgs
                             };
                             
-                            // If we achieved perfect position coverage and good balance, we can stop early
-                            if (positionCoverageScore === 1 && balanceScore > 0.9) {
+                            // Se alcançamos uma pontuação muito boa, podemos parar antes
+                            if (combinedScore > 0.95 && stdDevOfAvgs < 0.1) {
                                 break;
                             }
                         }
                     }
                     
-                    // Finalize progress bar
+                    // Finalizar barra de progresso
                     this.elements.progressBar.style.width = '100%';
                     this.elements.progressText.textContent = 'Sorteio concluído!';
                     
                     return bestTry;
                 },
                 
-                // Add best player to team considering restrictions
-                addBestPlayerToTeam(team, remainingPlayers) {
-                    // First, check if team needs any specific position
-                    const positions = ['ZAG', 'MEI', 'ATA'];
+                // Tenta trocar jogadores entre times para melhorar o equilíbrio
+                tryPlayerSwap(teamA, teamB, overallAvg, positions, availableByPosition) {
+                    const avgA = teamA.totalLevel / teamA.players.length;
+                    const avgB = teamB.totalLevel / teamB.players.length;
+                    
+                    // Determinar direção da troca
+                    const teamAIsHigher = avgA > avgB;
+                    
+                    // Se teamA tem média mais alta, procuramos jogadores de teamA para trocar com teamB
+                    const sourceTeam = teamAIsHigher ? teamA : teamB;
+                    const targetTeam = teamAIsHigher ? teamB : teamA;
+                    
+                    // Vamos primeiro tentar trocas que melhorem o equilíbrio de posições
                     for (const position of positions) {
-                        if (team.positions[position] === 0) {
-                            // Try to find a player of this position without restrictions
-                            const validPlayers = remainingPlayers.filter(p => 
-                                p.position === position && 
-                                !team.players.some(existingPlayer => 
-                                    this.playersHaveRestriction(existingPlayer.name, p.name)
-                                )
-                            );
+                        // Verificar se há um desequilíbrio de posições
+                        if (sourceTeam.positions[position] > 1 && targetTeam.positions[position] === 0) {
+                            // Procurar jogador da posição no time fonte
+                            const playerToMove = sourceTeam.players.find(p => p.position === position);
                             
-                            if (validPlayers.length > 0) {
-                                // Remove and add player
-                                const playerIndex = remainingPlayers.findIndex(p => p === validPlayers[0]);
-                                const player = remainingPlayers.splice(playerIndex, 1)[0];
-                                team.players.push(player);
-                                team.totalLevel += player.level;
-                                team.positions[position]++;
-                                return;
-                            }
-                            
-                            // If no valid player found, try any player of this position
-                            const positionPlayers = remainingPlayers.filter(p => p.position === position);
-                            if (positionPlayers.length > 0) {
-                                const playerIndex = remainingPlayers.findIndex(p => p === positionPlayers[0]);
-                                const player = remainingPlayers.splice(playerIndex, 1)[0];
-                                team.players.push(player);
-                                team.totalLevel += player.level;
-                                team.positions[position]++;
-                                return;
+                            if (playerToMove) {
+                                // Verificar restrições
+                                const hasRestriction = targetTeam.players.some(p => 
+                                    this.playersHaveRestriction(p.name, playerToMove.name)
+                                );
+                                
+                                if (!hasRestriction) {
+                                    // Procurar um jogador para trocar que melhore o equilíbrio de nível
+                                    for (const targetPlayer of targetTeam.players) {
+                                        // Calcular efeito da troca
+                                        const newSourceTotal = sourceTeam.totalLevel - playerToMove.level + targetPlayer.level;
+                                        const newTargetTotal = targetTeam.totalLevel - targetPlayer.level + playerToMove.level;
+                                        
+                                        const newAvgA = teamAIsHigher ? 
+                                            newSourceTotal / sourceTeam.players.length : 
+                                            newTargetTotal / targetTeam.players.length;
+                                        
+                                        const newAvgB = teamAIsHigher ? 
+                                            newTargetTotal / targetTeam.players.length : 
+                                            newSourceTotal / sourceTeam.players.length;
+                                        
+                                        const oldDiff = Math.abs(avgA - avgB);
+                                        const newDiff = Math.abs(newAvgA - newAvgB);
+                                        
+                                        // Se a troca melhora o equilíbrio
+                                        if (newDiff < oldDiff) {
+                                            // Executar a troca
+                                            // 1. Remover jogadores dos times atuais
+                                            sourceTeam.players = sourceTeam.players.filter(p => p !== playerToMove);
+                                            targetTeam.players = targetTeam.players.filter(p => p !== targetPlayer);
+                                            
+                                            // 2. Adicionar jogadores aos novos times
+                                            sourceTeam.players.push(targetPlayer);
+                                            targetTeam.players.push(playerToMove);
+                                            
+                                            // 3. Atualizar totais e posições
+                                            sourceTeam.totalLevel = sourceTeam.players.reduce((sum, p) => sum + p.level, 0);
+                                            targetTeam.totalLevel = targetTeam.players.reduce((sum, p) => sum + p.level, 0);
+                                            
+                                            sourceTeam.positions[playerToMove.position]--;
+                                            sourceTeam.positions[targetPlayer.position]++;
+                                            
+                                            targetTeam.positions[targetPlayer.position]--;
+                                            targetTeam.positions[playerToMove.position]++;
+                                            
+                                            return true; // Troca realizada
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                     
-                    // If team has all positions or no specific position player is available,
-                    // find a player without restrictions
+                    // Se não melhoramos as posições, tentar apenas melhorar o nível
+                    if (Math.abs(avgA - avgB) > 0.3) { // Só tenta se o desequilíbrio for significativo
+                        const sourcePlayers = sourceTeam.players
+                            .filter(p => !p.star && !p.weak) // Não trocar cabeças/perebas
+                            .sort((a, b) => teamAIsHigher ? b.level - a.level : a.level - b.level); // Ordenar por nível
+                        
+                        const targetPlayers = targetTeam.players
+                            .filter(p => !p.star && !p.weak) // Não trocar cabeças/perebas
+                            .sort((a, b) => teamAIsHigher ? a.level - b.level : b.level - a.level); // Ordenar por nível
+                        
+                        // Testar trocas para melhorar o equilíbrio
+                        for (const sourcePlayer of sourcePlayers) {
+                            for (const targetPlayer of targetPlayers) {
+                                // Verificar restrições
+                                const sourceRestriction = targetTeam.players
+                                    .filter(p => p !== targetPlayer)
+                                    .some(p => this.playersHaveRestriction(p.name, sourcePlayer.name));
+                                
+                                const targetRestriction = sourceTeam.players
+                                    .filter(p => p !== sourcePlayer)
+                                    .some(p => this.playersHaveRestriction(p.name, targetPlayer.name));
+                                
+                                if (!sourceRestriction && !targetRestriction) {
+                                    // Calcular efeito da troca
+                                    const newSourceTotal = sourceTeam.totalLevel - sourcePlayer.level + targetPlayer.level;
+                                    const newTargetTotal = targetTeam.totalLevel - targetPlayer.level + sourcePlayer.level;
+                                    
+                                    const newAvgA = newSourceTotal / sourceTeam.players.length;
+                                    const newAvgB = newTargetTotal / targetTeam.players.length;
+                                    
+                                    const currentDiffFromOverall = 
+                                        Math.abs(avgA - overallAvg) + Math.abs(avgB - overallAvg);
+                                    
+                                    const newDiffFromOverall = 
+                                        Math.abs(newAvgA - overallAvg) + Math.abs(newAvgB - overallAvg);
+                                    
+                                    // Se a troca melhora a aproximação com a média geral
+                                    if (newDiffFromOverall < currentDiffFromOverall) {
+                                        // Executar a troca
+                                        // 1. Remover jogadores dos times atuais
+                                        sourceTeam.players = sourceTeam.players.filter(p => p !== sourcePlayer);
+                                        targetTeam.players = targetTeam.players.filter(p => p !== targetPlayer);
+                                        
+                                        // 2. Adicionar jogadores aos novos times
+                                        sourceTeam.players.push(targetPlayer);
+                                        targetTeam.players.push(sourcePlayer);
+                                        
+                                        // 3. Atualizar totais e posições
+                                        sourceTeam.totalLevel = sourceTeam.players.reduce((sum, p) => sum + p.level, 0);
+                                        targetTeam.totalLevel = targetTeam.players.reduce((sum, p) => sum + p.level, 0);
+                                        
+                                        sourceTeam.positions[sourcePlayer.position]--;
+                                        sourceTeam.positions[targetPlayer.position]++;
+                                        
+                                        targetTeam.positions[targetPlayer.position]--;
+                                        targetTeam.positions[sourcePlayer.position]++;
+                                        
+                                        return true; // Troca realizada
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    return false; // Nenhuma troca melhorando o equilíbrio foi encontrada
+                },
+                
+                // Adiciona o jogador ideal para equilibrar o time em relação à média alvo
+                addOptimalPlayerToTeam(team, remainingPlayers, targetAvg) {
+                    // Filtrar jogadores sem restrições
                     const validPlayers = remainingPlayers.filter(p => 
                         !team.players.some(existingPlayer => 
                             this.playersHaveRestriction(existingPlayer.name, p.name)
                         )
                     );
                     
-                    if (validPlayers.length > 0) {
-                        // Get first valid player
-                        const playerIndex = remainingPlayers.findIndex(p => p === validPlayers[0]);
-                        const player = remainingPlayers.splice(playerIndex, 1)[0];
-                        team.players.push(player);
-                        team.totalLevel += player.level;
-                        team.positions[player.position]++;
-                    } else if (remainingPlayers.length > 0) {
-                        // If no valid player found, just get the next one
+                    if (validPlayers.length === 0 && remainingPlayers.length > 0) {
+                        // Se não houver jogadores sem restrições, use o primeiro disponível
                         const player = remainingPlayers.splice(0, 1)[0];
                         team.players.push(player);
                         team.totalLevel += player.level;
                         team.positions[player.position]++;
+                        return;
                     }
+                    
+                    // Calcular média atual do time
+                    const currentAvg = team.players.length > 0 ? team.totalLevel / team.players.length : 0;
+                    
+                    // Decidir se precisamos adicionar um jogador acima ou abaixo da média
+                    const needsHigherLevel = currentAvg < targetAvg;
+                    
+                    // Primeiro, priorizar posições ausentes se necessário
+                    for (const position of ['ZAG', 'MEI', 'ATA']) {
+                        if (team.positions[position] === 0) {
+                            // Filtrar jogadores da posição ausente
+                            const positionPlayers = validPlayers.filter(p => p.position === position);
+                            
+                            if (positionPlayers.length > 0) {
+                                // Se tivermos jogadores da posição ausente, escolher baseado no nível
+                                positionPlayers.sort((a, b) => needsHigherLevel ? b.level - a.level : a.level - b.level);
+                                
+                                // Encontrar o jogador que leva a média mais próxima do alvo
+                                const bestPlayer = this.findBestPlayerForTarget(positionPlayers, team, targetAvg);
+                                
+                                // Remover e adicionar o jogador
+                                const playerIndex = remainingPlayers.findIndex(p => p === bestPlayer);
+                                const player = remainingPlayers.splice(playerIndex, 1)[0];
+                                team.players.push(player);
+                                team.totalLevel += player.level;
+                                team.positions[player.position]++;
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // Se não precisamos priorizar posições ou não temos jogadores de posições ausentes
+                    // Encontrar o jogador que leva a média mais próxima do alvo
+                    const bestPlayer = this.findBestPlayerForTarget(validPlayers, team, targetAvg);
+                    
+                    // Remover e adicionar o jogador
+                    const playerIndex = remainingPlayers.findIndex(p => p === bestPlayer);
+                    const player = remainingPlayers.splice(playerIndex, 1)[0];
+                    team.players.push(player);
+                    team.totalLevel += player.level;
+                    team.positions[player.position]++;
+                },
+                
+                // Encontra o jogador que deixa a média do time mais próxima do alvo
+                findBestPlayerForTarget(players, team, targetAvg) {
+                    if (players.length === 0) return null;
+                    if (players.length === 1) return players[0];
+                    
+                    let bestPlayer = players[0];
+                    let bestDiff = Number.MAX_VALUE;
+                    
+                    for (const player of players) {
+                        // Calcular a nova média se adicionarmos este jogador
+                        const newAvg = (team.totalLevel + player.level) / (team.players.length + 1);
+                        
+                        // Calcular a diferença em relação ao alvo
+                        const diff = Math.abs(newAvg - targetAvg);
+                        
+                        // Se este jogador produz uma média mais próxima do alvo
+                        if (diff < bestDiff) {
+                            bestPlayer = player;
+                            bestDiff = diff;
+                        }
+                    }
+                    
+                    return bestPlayer;
                 },
                 
                 // Display teams in the UI
@@ -2017,9 +2226,9 @@
                         message += `- Média Técnica: ${(team.totalLevel / team.players.length).toFixed(1)}\n\n`;
                         
                         const positions = [
-                            { code: 'ZAG', symbol: '*' },
-                            { code: 'MEI', symbol: '*' },
-                            { code: 'ATA', symbol: '*' }
+                            { code: 'ZAG', symbol: '✓' },
+                            { code: 'MEI', symbol: '✓' },
+                            { code: 'ATA', symbol: '✓' }
                         ];
                         
                         positions.forEach(pos => {
@@ -2061,9 +2270,9 @@
                     message += `- Disponíveis: ${availablePlayers}\n\n`;
                     
                     const positions = [
-                        { code: 'ZAG', symbol: '*' },
-                        { code: 'MEI', symbol: '*' },
-                        { code: 'ATA', symbol: '*' }
+                        { code: 'ZAG', symbol: '-' },
+                        { code: 'MEI', symbol: '-' },
+                        { code: 'ATA', symbol: '-' }
                     ];
                     
                     positions.forEach(pos => {
