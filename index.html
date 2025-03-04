@@ -1859,26 +1859,30 @@
                         return 'Nenhum sorteio realizado ainda.';
                     }
                     
-                    let message = '⚽ *SORTEIO DE TIMES* ⚽\n\n';
+                    // Get current date and format it
+                    const today = new Date();
+                    const dateStr = today.toLocaleDateString('pt-BR');
+                    
+                    let message = `*SORTEIO DE TIMES - ${dateStr}*\n\n`;
                     
                     this.drawnTeams.forEach((team, index) => {
                         const isStarting = this.startingTeams.includes(team);
                         
-                        message += `*_${team.name}_* ${isStarting ? '(Começa jogando)' : ''}\n`;
-                        message += `👥 Jogadores: ${team.players.length}\n`;
-                        message += `💪 Nível Total: ${team.totalLevel.toFixed(1)}\n`;
-                        message += `⚖️ Média Técnica: ${(team.totalLevel / team.players.length).toFixed(1)}\n\n`;
+                        message += `*${team.name}* ${isStarting ? '(Começa jogando)' : ''}\n`;
+                        message += `- Jogadores: ${team.players.length}\n`;
+                        message += `- Nível Total: ${team.totalLevel.toFixed(1)}\n`;
+                        message += `- Média Técnica: ${(team.totalLevel / team.players.length).toFixed(1)}\n\n`;
                         
                         const positions = [
-                            { code: 'ZAG', emoji: '🛡️' },
-                            { code: 'MEI', emoji: '⚙️' },
-                            { code: 'ATA', emoji: '⚡' }
+                            { code: 'ZAG', symbol: '*' },
+                            { code: 'MEI', symbol: '#' },
+                            { code: 'ATA', symbol: '-' }
                         ];
                         
                         positions.forEach(pos => {
                             const posPlayers = team.players.filter(p => p.position === pos.code);
                             if (posPlayers.length > 0) {
-                                message += `${pos.emoji} *${pos.code}:* `;
+                                message += `${pos.symbol} *${pos.code}:* `;
                                 // Just the names, without level or indicators
                                 message += posPlayers.map(p => p.name).join(', ');
                                 message += '\n';
@@ -1889,12 +1893,12 @@
                     });
                     
                     if (this.startingTeams.length === 2) {
-                        message += '🏆 *Começa Jogando:* ';
+                        message += `- *Começa Jogando:* `;
                         message += this.startingTeams.map(t => t.name).join(' vs ');
                         message += '\n\n';
                     }
                     
-                    message += '🔄 Sorteado no Pelada Manager';
+                    message += 'Sorteado no Pelada Manager';
                     
                     return message;
                 },
@@ -1905,35 +1909,35 @@
                         return 'Nenhum jogador cadastrado ainda.';
                     }
                     
-                    let message = '⚽ *LISTA DE JOGADORES* ⚽\n\n';
+                    let message = '*LISTA DE JOGADORES*\n\n';
                     
                     const totalPlayers = this.players.length;
                     const availablePlayers = this.players.filter(p => p.available).length;
                     
-                    message += `👥 *Total de Jogadores:* ${totalPlayers}\n`;
-                    message += `✅ *Disponíveis:* ${availablePlayers}\n\n`;
+                    message += `- Total de Jogadores: ${totalPlayers}\n`;
+                    message += `- Disponíveis: ${availablePlayers}\n\n`;
                     
                     const positions = [
-                        { code: 'ZAG', emoji: '🛡️' },
-                        { code: 'MEI', emoji: '⚙️' },
-                        { code: 'ATA', emoji: '⚡' }
+                        { code: 'ZAG', symbol: '*' },
+                        { code: 'MEI', symbol: '#' },
+                        { code: 'ATA', symbol: '-' }
                     ];
                     
                     positions.forEach(pos => {
                         const posPlayers = this.players.filter(p => p.position === pos.code);
                         if (posPlayers.length > 0) {
-                            message += `${pos.emoji} *${pos.code} (${posPlayers.length}):*\n`;
+                            message += `${pos.symbol} *${pos.code} (${posPlayers.length}):*\n`;
                             
                             // Sort by name
                             const sortedPlayers = [...posPlayers].sort((a, b) => a.name.localeCompare(b.name));
                             
                             sortedPlayers.forEach(p => {
                                 let name = p.name;
-                                if (p.star) name += ' ⭐';
+                                if (p.star) name += ' ★';
                                 if (p.weak) name += ' ↓';
                                 
                                 message += `   ${name} (${p.level})`;
-                                message += p.available ? ' ✅' : ' ❌';
+                                message += p.available ? ' ✓' : ' ✗';
                                 message += '\n';
                             });
                             
@@ -1941,7 +1945,7 @@
                         }
                     });
                     
-                    message += '🔄 Gerado no Pelada Manager';
+                    message += 'Gerado no Pelada Manager';
                     
                     return message;
                 },
@@ -1977,23 +1981,8 @@
                 
                 // Load demo players
                 loadDemoPlayers() {
-                    if (this.players.length === 0) {
-                        const demoPlayers = [
-                            { id: 1, name: 'Carlos', position: 'ZAG', level: 4.5, available: true, star: true, weak: false },
-                            { id: 2, name: 'Rafael', position: 'ZAG', level: 3.5, available: true, star: false, weak: false },
-                            { id: 3, name: 'Márcio', position: 'ZAG', level: 3.0, available: true, star: false, weak: false },
-                            { id: 4, name: 'Guilherme', position: 'ZAG', level: 2.5, available: true, star: false, weak: false },
-                            { id: 5, name: 'Eduardo', position: 'MEI', level: 4.0, available: true, star: true, weak: false },
-                            { id: 6, name: 'Lucas', position: 'MEI', level: 3.5, available: true, star: false, weak: false },
-                            { id: 7, name: 'André', position: 'MEI', level: 3.5, available: true, star: false, weak: false },
-                            { id: 8, name: 'Diego', position: 'MEI', level: 3.0, available: true, star: false, weak: false },
-                            { id: 9, name: 'Henrique', position: 'MEI', level: 2.0, available: true, star: false, weak: true },
-                            { id: 10, name: 'Ricardo', position: 'ATA', level: 4.5, available: true, star: true, weak: false },
-                            { id: 11, name: 'Fernando', position: 'ATA', level: 4.0, available: true, star: false, weak: false },
-                            { id: 12, name: 'Gabriel', position: 'ATA', level: 3.0, available: true, star: false, weak: false },
-                            { id: 13, name: 'Bruno', position: 'ATA', level: 2.0, available: true, star: false, weak: true },
-                            { id: 14, name: 'Thiago', position: 'ATA', level: 1.5, available: false, star: false, weak: false }
-                        ];
+                //Fução desativada
+                    ];
                         
                         this.players = demoPlayers;
                         this.currentId = 15;
