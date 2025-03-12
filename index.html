@@ -2878,8 +2878,8 @@
                                 // Display names with status indicators
                                 const playerNames = posPlayers.map(player => {
                                     let name = player.name;
-                                    if (this.isPlayerStar(player.name)) name += " ★";
-                                    if (this.isPlayerWeak(player.name)) name += " ↓";
+                                    if (this.isPlayerStar(player.name)) name += "";
+                                    if (this.isPlayerWeak(player.name)) name += "";
                                     return name;
                                 });
                                 
