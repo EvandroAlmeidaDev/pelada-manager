@@ -142,6 +142,35 @@
             display: inline-block;
             margin-right: 2px;
         }
+
+        /* Estilos para exportação/importação */
+        .file-input {
+            width: 0.1px;
+            height: 0.1px;
+            opacity: 0;
+            overflow: hidden;
+            position: absolute;
+            z-index: -1;
+        }
+
+        .file-input + label {
+            cursor: pointer;
+            display: inline-block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+        }
+
+        /* Estilo para o dropdown na tela de sorteio */
+        .player-status-select {
+            padding: 2px 4px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 0.75rem;
+            background-color: white;
+        }
     </style>
 </head>
 <body class="font-sans bg-light-primary text-gray-800">
@@ -218,6 +247,20 @@
                             <div class="bg-white p-3 rounded-lg shadow">
                                 <p class="text-gray-500 text-sm">Média Técnica</p>
                                 <p class="text-2xl font-bold" id="avg-level">0.0</p>
+                            </div>
+                        </div>
+
+                        <!-- Import/Export Buttons -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button id="export-players-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                                <i class="fas fa-file-export mr-2"></i>Exportar Jogadores
+                            </button>
+                            
+                            <div class="relative overflow-hidden">
+                                <input type="file" id="import-players-input" class="file-input" accept=".json">
+                                <label for="import-players-input" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
+                                    <i class="fas fa-file-import mr-2"></i>Importar Jogadores
+                                </label>
                             </div>
                         </div>
 
@@ -304,28 +347,6 @@
                                 >
                                 <label for="player-available" class="ml-2 font-medium">
                                     Disponível para sorteio
-                                </label>
-                            </div>
-
-                            <div class="flex items-center space-x-3">
-                                <input 
-                                    type="checkbox" 
-                                    id="player-star" 
-                                    class="w-5 h-5 text-primary"
-                                >
-                                <label for="player-star" class="font-medium">
-                                    Cabeça de Chave
-                                </label>
-                            </div>
-
-                            <div class="flex items-center space-x-3">
-                                <input 
-                                    type="checkbox" 
-                                    id="player-weak" 
-                                    class="w-5 h-5 text-primary"
-                                >
-                                <label for="player-weak" class="font-medium">
-                                    Pereba do Dia
                                 </label>
                             </div>
 
@@ -569,8 +590,7 @@
                                         <li>Cada time terá pelo menos um jogador de cada posição (ZAG, MEI, ATA), quando possível</li>
                                         <li>O nível técnico total dos times será equilibrado</li>
                                         <li>Todos os times terão o mesmo número de jogadores</li>
-                                        <li>Os cabeças de chave serão distribuídos primeiro</li>
-                                        <li>Os perebas do dia serão distribuídos depois</li>
+                                        <li>Após o sorteio, você pode definir quem são os cabeças de chave e perebas</li>
                                         <li>Restrições de jogadores serão respeitadas</li>
                                     </ul>
                                 </div>
@@ -615,8 +635,6 @@
                     playerLevel: document.getElementById('player-level'),
                     levelValue: document.getElementById('level-value'),
                     playerAvailable: document.getElementById('player-available'),
-                    playerStar: document.getElementById('player-star'),
-                    playerWeak: document.getElementById('player-weak'),
                     cancelButton: document.getElementById('cancel-button'),
                     formTitle: document.getElementById('form-title'),
                     
@@ -631,6 +649,10 @@
                     meiCount: document.getElementById('mei-count'),
                     ataCount: document.getElementById('ata-count'),
                     avgLevel: document.getElementById('avg-level'),
+                    
+                    // Import/Export elements
+                    exportPlayersBtn: document.getElementById('export-players-btn'),
+                    importPlayersInput: document.getElementById('import-players-input'),
                     
                     // Quick action buttons
                     toggleAllBtn: document.getElementById('toggle-all-btn'),
@@ -689,7 +711,6 @@
                     this.setupEventListeners();
                     this.updateStats();
                     this.updateUI();
-                    this.loadDemoPlayers();
                 },
                 
                 // Load data from localStorage
@@ -740,6 +761,16 @@
                     // Player search
                     this.elements.playerSearch.addEventListener('input', () => {
                         this.filterPlayers();
+                    });
+                    
+                    // Export players button
+                    this.elements.exportPlayersBtn.addEventListener('click', () => {
+                        this.exportPlayers();
+                    });
+                    
+                    // Import players input
+                    this.elements.importPlayersInput.addEventListener('change', (e) => {
+                        this.importPlayers(e);
                     });
                     
                     // Quick action buttons
@@ -806,6 +837,115 @@
                     });
                 },
                 
+                // Export players to a JSON file
+                exportPlayers() {
+                    if (this.players.length === 0) {
+                        this.showToast('Nenhum jogador para exportar!', 'error');
+                        return;
+                    }
+                    
+                    // Create a simplified version with only the needed fields
+                    const playersToExport = this.players.map(player => ({
+                        name: player.name,
+                        position: player.position,
+                        level: player.level
+                    }));
+                    
+                    const dataStr = JSON.stringify(playersToExport, null, 2);
+                    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    // Create a temporary link and click it to trigger download
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'pelada_jogadores.json';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    this.showToast('Jogadores exportados com sucesso!', 'success');
+                },
+                
+                // Import players from a JSON file
+                importPlayers(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        try {
+                            const importedPlayers = JSON.parse(e.target.result);
+                            
+                            if (!Array.isArray(importedPlayers)) {
+                                throw new Error('Formato inválido. Esperava uma lista de jogadores.');
+                            }
+                            
+                            // Validate required fields
+                            const validPlayers = importedPlayers.filter(player => 
+                                player.name && player.position && typeof player.level === 'number'
+                            );
+                            
+                            if (validPlayers.length === 0) {
+                                this.showToast('Nenhum jogador válido encontrado no arquivo!', 'error');
+                                return;
+                            }
+                            
+                            // Confirm before importing
+                            if (confirm(`Deseja importar ${validPlayers.length} jogadores? Jogadores com o mesmo nome serão atualizados.`)) {
+                                let added = 0;
+                                let updated = 0;
+                                
+                                validPlayers.forEach(importedPlayer => {
+                                    // Check if player already exists by name
+                                    const existingPlayer = this.players.find(p => 
+                                        p.name.toLowerCase() === importedPlayer.name.toLowerCase()
+                                    );
+                                    
+                                    if (existingPlayer) {
+                                        // Update existing player
+                                        existingPlayer.position = importedPlayer.position;
+                                        existingPlayer.level = importedPlayer.level;
+                                        updated++;
+                                    } else {
+                                        // Add new player
+                                        const newPlayer = {
+                                            id: this.currentId++,
+                                            name: importedPlayer.name,
+                                            position: importedPlayer.position,
+                                            level: importedPlayer.level,
+                                            available: true,
+                                            star: false,
+                                            weak: false
+                                        };
+                                        
+                                        this.players.push(newPlayer);
+                                        added++;
+                                    }
+                                });
+                                
+                                // Save changes
+                                this.savePlayers();
+                                
+                                // Update UI
+                                this.updateStats();
+                                this.updatePlayerList();
+                                this.updateRestrictionPlayersDropdown();
+                                
+                                this.showToast(`Importação concluída! ${added} adicionados, ${updated} atualizados.`, 'success');
+                            }
+                        } catch (error) {
+                            console.error('Erro ao importar jogadores:', error);
+                            this.showToast('Erro ao importar jogadores. Verifique o formato do arquivo.', 'error');
+                        }
+                    };
+                    
+                    reader.readAsText(file);
+                    
+                    // Reset the file input so the same file can be selected again
+                    event.target.value = '';
+                },
+                
                 // Add a new player or update existing player
                 savePlayer() {
                     const playerId = this.elements.playerId.value;
@@ -813,8 +953,6 @@
                     const position = this.elements.playerPosition.value;
                     const level = parseFloat(this.elements.playerLevel.value);
                     const available = this.elements.playerAvailable.checked;
-                    const star = this.elements.playerStar.checked;
-                    const weak = this.elements.playerWeak.checked;
                     
                     // Validate form
                     if (!name || !position) {
@@ -829,18 +967,16 @@
                         return;
                     }
                     
-                    // Check for both star and weak checked
-                    if (star && weak) {
-                        this.showToast('Jogador não pode ser Cabeça de Chave e Pereba ao mesmo tempo!', 'error');
-                        return;
-                    }
-                    
                     if (playerId) {
                         // Update existing player
                         const index = this.players.findIndex(p => p.id === parseInt(playerId));
                         if (index !== -1) {
                             // Get old name to update restrictions if needed
                             const oldName = this.players[index].name;
+                            
+                            // Preserve star and weak status when updating
+                            const star = this.players[index].star || false;
+                            const weak = this.players[index].weak || false;
                             
                             this.players[index] = {
                                 id: parseInt(playerId),
@@ -867,8 +1003,8 @@
                             position,
                             level,
                             available,
-                            star,
-                            weak
+                            star: false,
+                            weak: false
                         };
                         this.players.push(newPlayer);
                         this.showToast('Jogador adicionado com sucesso!', 'success');
@@ -1044,8 +1180,6 @@
                         this.elements.playerLevel.value = player.level;
                         this.elements.levelValue.textContent = player.level;
                         this.elements.playerAvailable.checked = player.available;
-                        this.elements.playerStar.checked = player.star || false;
-                        this.elements.playerWeak.checked = player.weak || false;
                         
                         // Update form title and show cancel button
                         this.elements.formTitle.textContent = 'Editar Jogador';
@@ -1265,6 +1399,11 @@
                     // Update stats and UI
                     this.updatePlayerList();
                     
+                    if (this.namesRevealed) {
+                        // If the teams are already revealed, update the display to reflect the reset status
+                        this.displayTeams(true);
+                    }
+                    
                     this.showToast('Cabeças de Chave e Perebas resetados!', 'success');
                 },
                 
@@ -1325,6 +1464,13 @@
                 
                 // Draw teams
                 drawTeams() {
+                    // Reset status of all players (remove star/weak designations)
+                    this.players.forEach(p => {
+                        p.star = false;
+                        p.weak = false;
+                    });
+                    this.savePlayers();
+                    
                     // Get available players
                     const availablePlayers = this.players.filter(p => p.available);
                     
@@ -1396,11 +1542,6 @@
                 
                 // Perform team draw algorithm
                 performTeamDraw(availablePlayers, playersPerTeam, numberOfTeams, teamNames) {
-                    // Get stars and weak players
-                    const starPlayers = availablePlayers.filter(p => p.star);
-                    const weakPlayers = availablePlayers.filter(p => p.weak && !p.star);
-                    const regularPlayers = availablePlayers.filter(p => !p.star && !p.weak);
-                    
                     // Count available players by position
                     const positions = ['ZAG', 'MEI', 'ATA'];
                     const availableByPosition = {};
@@ -1412,10 +1553,10 @@
                     let bestTry = {
                         teams: [],
                         balanceScore: 0,
-                        levelDeviation: Number.MAX_VALUE // Armazenar o desvio máximo para avaliar equilíbrio
+                        levelDeviation: Number.MAX_VALUE
                     };
                     
-                    const maxTries = 100; // Aumentando o número de tentativas para encontrar um equilíbrio melhor
+                    const maxTries = 100;
                     
                     // Try multiple times to find the best balance
                     for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
@@ -1428,162 +1569,11 @@
                             players: [],
                             totalLevel: 0,
                             index,
-                            positions: {ZAG: 0, MEI: 0, ATA: 0} // Track number of players per position
+                            positions: {ZAG: 0, MEI: 0, ATA: 0}
                         }));
                         
-                        // Distribute stars first, one per team if possible
-                        let availableStars = [...starPlayers];
-                        if (availableStars.length > 0) {
-                            // Shuffle stars
-                            availableStars = this.shuffleArray(availableStars);
-                            
-                            // Distribute one star per team if possible
-                            for (let i = 0; i < Math.min(teams.length, availableStars.length); i++) {
-                                teams[i].players.push(availableStars[i]);
-                                teams[i].totalLevel += availableStars[i].level;
-                                teams[i].positions[availableStars[i].position]++;
-                            }
-                            
-                            // Put remaining stars to the teams with lowest levels
-                            if (availableStars.length > teams.length) {
-                                for (let i = teams.length; i < availableStars.length; i++) {
-                                    // Find team with lowest level
-                                    const targetTeam = teams.reduce((prev, curr) => 
-                                        prev.totalLevel < curr.totalLevel ? prev : curr
-                                    );
-                                    
-                                    // Check restrictions
-                                    const starPlayer = availableStars[i];
-                                    const hasRestriction = targetTeam.players.some(p => 
-                                        this.playersHaveRestriction(p.name, starPlayer.name)
-                                    );
-                                    
-                                    if (hasRestriction) {
-                                        // Find next best team without restrictions
-                                        const teamsWithoutRestrictions = teams.filter(team => 
-                                            !team.players.some(p => this.playersHaveRestriction(p.name, starPlayer.name))
-                                        );
-                                        
-                                        if (teamsWithoutRestrictions.length > 0) {
-                                            // Get team with lowest level among those without restrictions
-                                            const alternateTeam = teamsWithoutRestrictions.reduce((prev, curr) => 
-                                                prev.totalLevel < curr.totalLevel ? prev : curr
-                                            );
-                                            
-                                            alternateTeam.players.push(starPlayer);
-                                            alternateTeam.totalLevel += starPlayer.level;
-                                            alternateTeam.positions[starPlayer.position]++;
-                                        } else {
-                                            // If all teams have restrictions, still add to lowest level team
-                                            targetTeam.players.push(starPlayer);
-                                            targetTeam.totalLevel += starPlayer.level;
-                                            targetTeam.positions[starPlayer.position]++;
-                                        }
-                                    } else {
-                                        targetTeam.players.push(starPlayer);
-                                        targetTeam.totalLevel += starPlayer.level;
-                                        targetTeam.positions[starPlayer.position]++;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Distribute weaks second, one per team if possible
-                        let availableWeaks = [...weakPlayers];
-                        if (availableWeaks.length > 0) {
-                            // Shuffle weaks
-                            availableWeaks = this.shuffleArray(availableWeaks);
-                            
-                            // Sort teams by level (descending)
-                            teams.sort((a, b) => b.totalLevel - a.totalLevel);
-                            
-                            // Distribute one weak per team if possible
-                            for (let i = 0; i < Math.min(teams.length, availableWeaks.length); i++) {
-                                const weakPlayer = availableWeaks[i];
-                                
-                                // Check restrictions
-                                const hasRestriction = teams[i].players.some(p => 
-                                    this.playersHaveRestriction(p.name, weakPlayer.name)
-                                );
-                                
-                                if (hasRestriction) {
-                                    // Find another team without restrictions
-                                    const teamsWithoutRestrictions = teams.filter(team => 
-                                        !team.players.some(p => this.playersHaveRestriction(p.name, weakPlayer.name))
-                                    );
-                                    
-                                    if (teamsWithoutRestrictions.length > 0) {
-                                        // Get team with highest level among those without restrictions
-                                        const alternateTeam = teamsWithoutRestrictions.reduce((prev, curr) => 
-                                            prev.totalLevel > curr.totalLevel ? prev : curr
-                                        );
-                                        
-                                        alternateTeam.players.push(weakPlayer);
-                                        alternateTeam.totalLevel += weakPlayer.level;
-                                        alternateTeam.positions[weakPlayer.position]++;
-                                    } else {
-                                        // If all teams have restrictions, still add to highest level team
-                                        teams[i].players.push(weakPlayer);
-                                        teams[i].totalLevel += weakPlayer.level;
-                                        teams[i].positions[weakPlayer.position]++;
-                                    }
-                                } else {
-                                    teams[i].players.push(weakPlayer);
-                                    teams[i].totalLevel += weakPlayer.level;
-                                    teams[i].positions[weakPlayer.position]++;
-                                }
-                            }
-                            
-                            // Sort teams by level again (ascending)
-                            teams.sort((a, b) => a.totalLevel - b.totalLevel);
-                            
-                            // Put remaining weaks to the teams with highest levels
-                            if (availableWeaks.length > teams.length) {
-                                for (let i = teams.length; i < availableWeaks.length; i++) {
-                                    // Find team with highest level
-                                    const targetTeam = teams.reduce((prev, curr) => 
-                                        prev.totalLevel > curr.totalLevel ? prev : curr
-                                    );
-                                    
-                                    const weakPlayer = availableWeaks[i];
-                                    
-                                    // Check for restrictions
-                                    const hasRestriction = targetTeam.players.some(p => 
-                                        this.playersHaveRestriction(p.name, weakPlayer.name)
-                                    );
-                                    
-                                    if (hasRestriction) {
-                                        // Find another team without restrictions
-                                        const teamsWithoutRestrictions = teams.filter(team => 
-                                            !team.players.some(p => this.playersHaveRestriction(p.name, weakPlayer.name))
-                                        );
-                                        
-                                        if (teamsWithoutRestrictions.length > 0) {
-                                            // Get team with highest level among those without restrictions
-                                            const alternateTeam = teamsWithoutRestrictions.reduce((prev, curr) => 
-                                                prev.totalLevel > curr.totalLevel ? prev : curr
-                                            );
-                                            
-                                            alternateTeam.players.push(weakPlayer);
-                                            alternateTeam.totalLevel += weakPlayer.level;
-                                            alternateTeam.positions[weakPlayer.position]++;
-                                        } else {
-                                            // If all teams have restrictions, still add to highest level team
-                                            targetTeam.players.push(weakPlayer);
-                                            targetTeam.totalLevel += weakPlayer.level;
-                                            targetTeam.positions[weakPlayer.position]++;
-                                        }
-                                    } else {
-                                        targetTeam.players.push(weakPlayer);
-                                        targetTeam.totalLevel += weakPlayer.level;
-                                        targetTeam.positions[weakPlayer.position]++;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Shuffle regular players
-                        let remainingPlayers = [...regularPlayers];
+                        // Shuffle all players - we don't separate by star/weak status since that will be done after the draw
+                        let remainingPlayers = this.shuffleArray([...availablePlayers]);
                         
                         // PRIMEIRO PASSO: Distribuir jogadores por posição se houver suficientes
                         for (const position of positions) {
@@ -1933,13 +1923,13 @@
                     
                     // Se não melhoramos as posições, tentar apenas melhorar o nível
                     if (Math.abs(avgA - avgB) > 0.3) { // Só tenta se o desequilíbrio for significativo
-                        const sourcePlayers = sourceTeam.players
-                            .filter(p => !p.star && !p.weak) // Não trocar cabeças/perebas
-                            .sort((a, b) => teamAIsHigher ? b.level - a.level : a.level - b.level); // Ordenar por nível
+                        const sourcePlayers = sourceTeam.players.sort((a, b) => 
+                            teamAIsHigher ? b.level - a.level : a.level - b.level
+                        );
                         
-                        const targetPlayers = targetTeam.players
-                            .filter(p => !p.star && !p.weak) // Não trocar cabeças/perebas
-                            .sort((a, b) => teamAIsHigher ? a.level - b.level : b.level - a.level); // Ordenar por nível
+                        const targetPlayers = targetTeam.players.sort((a, b) => 
+                            teamAIsHigher ? a.level - b.level : b.level - a.level
+                        );
                         
                         // Testar trocas para melhorar o equilíbrio
                         for (const sourcePlayer of sourcePlayers) {
@@ -2083,6 +2073,35 @@
                     return bestPlayer;
                 },
                 
+                // Set player status (star/weak)
+                setPlayerStatus(playerName, status) {
+                    const player = this.players.find(p => p.name === playerName);
+                    if (player) {
+                        if (status === 'star') {
+                            player.star = true;
+                            player.weak = false;
+                        } else if (status === 'weak') {
+                            player.star = false;
+                            player.weak = true;
+                        } else {
+                            player.star = false;
+                            player.weak = false;
+                        }
+                        this.savePlayers();
+                    }
+                },
+                
+                // Handle status change from UI
+                handleStatusChange(event, playerName) {
+                    const status = event.target.value;
+                    this.setPlayerStatus(playerName, status);
+                    
+                    // If the teams are already revealed, update the display
+                    if (this.namesRevealed) {
+                        this.displayTeams(true);
+                    }
+                },
+                
                 // Display teams in the UI
                 displayTeams(showNames = false) {
                     if (!this.drawnTeams || this.drawnTeams.length === 0) {
@@ -2125,11 +2144,14 @@
                         else if (index === 2) headerColor = 'bg-green-500 text-white';
                         else if (index === 3) headerColor = 'bg-yellow-500 text-white';
                         
-                        teamCard.innerHTML = `
+                        let teamHeader = `
                             <div class="p-4 ${headerColor} flex justify-between items-center">
                                 <h3 class="text-lg font-bold">${team.name}</h3>
                                 ${isStarting ? '<span class="bg-white text-green-600 px-2 py-1 rounded text-xs font-bold">Começa Jogando</span>' : ''}
                             </div>
+                        `;
+                        
+                        let teamStats = `
                             <div class="p-4">
                                 <div class="grid grid-cols-3 gap-3 mb-4">
                                     <div class="bg-gray-100 p-2 rounded text-center">
@@ -2145,63 +2167,90 @@
                                         <p class="text-xl font-bold">${avgLevel}</p>
                                     </div>
                                 </div>
-                                
-                                <div class="space-y-3">
-                                    ${positions.map(pos => {
-                                        const posPlayers = team.players.filter(p => p.position === pos);
-                                        
-                                        let positionClass = '';
-                                        if (pos === 'ZAG') positionClass = 'bg-red-100 text-red-800';
-                                        else if (pos === 'MEI') positionClass = 'bg-green-100 text-green-800';
-                                        else if (pos === 'ATA') positionClass = 'bg-blue-100 text-blue-800';
-                                        
-                                        return `
-                                            <div>
-                                                <h4 class="text-sm font-medium mb-2">
-                                                    <span class="inline-block px-2 py-1 rounded-full text-xs ${positionClass}">${pos}</span>
-                                                    <span class="text-gray-500">(${posPlayers.length})</span>
-                                                </h4>
-                                                <ul class="space-y-2">
-                                                    ${posPlayers.map(player => {
-                                                        let playerDisplay = '';
-                                                        
-                                                        if (showNames) {
-                                                            let nameDisplay = player.name;
-                                                            if (player.star) nameDisplay += ' ⭐';
-                                                            if (player.weak) nameDisplay += ' <i class="fas fa-arrow-down text-red-600"></i>';
-                                                            
-                                                            playerDisplay = `
-                                                                <span class="font-medium">${nameDisplay}</span>
-                                                                <span class="text-gray-500 ml-2">(${player.level})</span>
-                                                            `;
-                                                        } else {
-                                                            playerDisplay = `
-                                                                <span class="font-medium bg-gray-200 px-3 py-1 rounded-lg animate-pulse-slow">
-                                                                    Jogador ${player.star ? '⭐' : player.weak ? '<i class="fas fa-arrow-down text-red-600"></i>' : ''}
-                                                                </span>
-                                                                <span class="text-gray-500 ml-2">(${player.level})</span>
-                                                            `;
-                                                        }
-                                                        
-                                                        return `<li class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm">${playerDisplay}</li>`;
-                                                    }).join('')}
-                                                </ul>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            </div>
                         `;
                         
+                        let positionsHTML = '';
+                        
+                        positions.forEach(pos => {
+                            const posPlayers = team.players.filter(p => p.position === pos);
+                            
+                            let positionClass = '';
+                            if (pos === 'ZAG') positionClass = 'bg-red-100 text-red-800';
+                            else if (pos === 'MEI') positionClass = 'bg-green-100 text-green-800';
+                            else if (pos === 'ATA') positionClass = 'bg-blue-100 text-blue-800';
+                            
+                            positionsHTML += `
+                                <div>
+                                    <h4 class="text-sm font-medium mb-2">
+                                        <span class="inline-block px-2 py-1 rounded-full text-xs ${positionClass}">${pos}</span>
+                                        <span class="text-gray-500">(${posPlayers.length})</span>
+                                    </h4>
+                                    <ul class="space-y-2">
+                            `;
+                            
+                            posPlayers.forEach(player => {
+                                // Get the current player from the main players array to get updated star/weak status
+                                const currentPlayer = this.players.find(p => p.name === player.name);
+                                const isStar = currentPlayer ? currentPlayer.star : false;
+                                const isWeak = currentPlayer ? currentPlayer.weak : false;
+                                
+                                if (showNames) {
+                                    let nameDisplay = player.name;
+                                    
+                                    // If showing names, add a dropdown for selecting player status
+                                    positionsHTML += `
+                                        <li class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
+                                            <div>
+                                                <span class="font-medium">${nameDisplay}</span>
+                                                <span class="text-gray-500 ml-2">(${player.level})</span>
+                                                ${isStar ? '<span class="text-yellow-500 ml-1">⭐</span>' : ''}
+                                                ${isWeak ? '<i class="fas fa-arrow-down text-red-600 ml-1"></i>' : ''}
+                                            </div>
+                                            <select 
+                                                class="player-status-select ml-2" 
+                                                data-player="${player.name}"
+                                                onchange="app.handleStatusChange(event, '${player.name}')"
+                                            >
+                                                <option value="none" ${!isStar && !isWeak ? 'selected' : ''}>Normal</option>
+                                                <option value="star" ${isStar ? 'selected' : ''}>⭐ Cabeça</option>
+                                                <option value="weak" ${isWeak ? 'selected' : ''}>↓ Pereba</option>
+                                            </select>
+                                        </li>
+                                    `;
+                                } else {
+                                    positionsHTML += `
+                                        <li class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                                            <span class="font-medium bg-gray-200 px-3 py-1 rounded-lg animate-pulse-slow">
+                                                Jogador
+                                            </span>
+                                            <span class="text-gray-500 ml-2">(${player.level})</span>
+                                        </li>
+                                    `;
+                                }
+                            });
+                            
+                            positionsHTML += `
+                                    </ul>
+                                </div>
+                            `;
+                        });
+                        
+                        teamCard.innerHTML = teamHeader + teamStats + `<div class="space-y-3">${positionsHTML}</div></div>`;
                         this.elements.teamsContainer.appendChild(teamCard);
                     });
+                    
+                    // Show or hide share buttons
+                    if (showNames) {
+                        this.elements.shareButtons.classList.remove('hidden');
+                    } else {
+                        this.elements.shareButtons.classList.add('hidden');
+                    }
                 },
                 
                 // Reveal player names
                 revealPlayerNames() {
                     this.elements.acceptBalanceBtn.classList.add('hidden');
                     this.elements.tryAgainBtn.classList.add('hidden');
-                    this.elements.shareButtons.classList.remove('hidden');
                     this.displayTeams(true);
                 },
                 
@@ -2226,17 +2275,26 @@
                         message += `- Média Técnica: ${(team.totalLevel / team.players.length).toFixed(1)}\n\n`;
                         
                         const positions = [
-                            { code: 'ZAG', symbol: '✓' },
-                            { code: 'MEI', symbol: '✓' },
-                            { code: 'ATA', symbol: '✓' }
+                            { code: 'ZAG', symbol: '-' },
+                            { code: 'MEI', symbol: '-' },
+                            { code: 'ATA', symbol: '-' }
                         ];
                         
                         positions.forEach(pos => {
                             const posPlayers = team.players.filter(p => p.position === pos.code);
                             if (posPlayers.length > 0) {
                                 message += `${pos.symbol} *${pos.code}:* `;
-                                // Just the names, without level or indicators
-                                message += posPlayers.map(p => p.name).join(', ');
+                                
+                                // Display names with status indicators
+                                const playerNames = posPlayers.map(player => {
+                                    const currentPlayer = this.players.find(p => p.name === player.name);
+                                    let name = player.name;
+                                    if (currentPlayer && currentPlayer.star) name += " ★";
+                                    if (currentPlayer && currentPlayer.weak) name += " ↓";
+                                    return name;
+                                });
+                                
+                                message += playerNames.join(', ');
                                 message += '\n';
                             }
                         });
@@ -2331,17 +2389,6 @@
                     });
                 },
                 
-                // Load demo players
-                loadDemoPlayers() {
-                    // Função desativada para não carregar jogadores de demonstração
-                    if (localStorage.getItem('demoPlayersLoaded') === 'true') {
-                        return;
-                    }
-    
-                    localStorage.setItem('demoPlayersLoaded', 'true');
-                    return;
-                },
-                
                 // Show toast notification
                 showToast(message, type = 'success') {
                     // Set icon and background color based on type
@@ -2395,6 +2442,9 @@
                     this.updateRestrictionsList();
                 }
             };
+            
+            // Make app globally accessible for the event handlers
+            window.app = app;
             
             // Initialize the app
             app.init();
