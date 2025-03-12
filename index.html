@@ -11,8 +11,8 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#5D5CDE',
-                        secondary: '#4B4ACB',
+                        primary: '#0F9D58', // Verde Futebol
+                        secondary: '#0C8048', // Verde Escuro
                         success: '#10B981',
                         danger: '#EF4444',
                         warning: '#F59E0B',
@@ -20,6 +20,15 @@
                             primary: '#FFFFFF',
                             secondary: '#F3F4F6',
                             tertiary: '#E5E7EB'
+                        },
+                        field: {
+                            light: '#4CAF50', // Verde Claro (campo)
+                            dark: '#388E3C',  // Verde Médio
+                            line: '#FFFFFF'   // Linha do campo
+                        },
+                        football: {
+                            black: '#333333',
+                            white: '#FFFFFF'
                         }
                     }
                 }
@@ -51,7 +60,7 @@
             width: 20px;
             height: 20px;
             border-radius: 50%;
-            background: #5D5CDE;
+            background: #0F9D58;
             cursor: pointer;
         }
         
@@ -59,7 +68,7 @@
             width: 20px;
             height: 20px;
             border-radius: 50%;
-            background: #5D5CDE;
+            background: #0F9D58;
             cursor: pointer;
         }
 
@@ -129,7 +138,7 @@
         }
         
         input:checked + .toggle-slider {
-            background-color: #5D5CDE;
+            background-color: #0F9D58;
         }
         
         input:checked + .toggle-slider:before {
@@ -163,23 +172,105 @@
             border-radius: 0.5rem;
         }
 
-        /* Estilo para o dropdown na tela de sorteio */
-        .player-status-select {
-            padding: 2px 4px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            font-size: 0.75rem;
+        /* Estilos para o modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .modal-content {
             background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            width: 500px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 1rem;
+            overflow-y: auto;
+            max-height: 70vh;
+        }
+        
+        .modal-footer {
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        /* Player Grid */
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.5rem;
+        }
+        
+        .player-card {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .player-card:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .player-card.selected {
+            border-color: #0F9D58;
+            background-color: #E8F5E9;
+        }
+        
+        /* Campo de futebol background */
+        .football-field-bg {
+            background: linear-gradient(#4CAF50, #388E3C);
+            background-size: 40px 40px;
+            background-image: repeating-linear-gradient(0deg, #388E3C, #388E3C 2px, #4CAF50 2px, #4CAF50 20px);
+        }
+        
+        .navbar-pattern {
+            background-color: #0F9D58;
+            background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23FFFFFF' fill-opacity='0.05' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        /* Football ball style */
+        .football-icon {
+            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
         }
     </style>
 </head>
 <body class="font-sans bg-light-primary text-gray-800">
     <div id="app" class="min-h-screen flex flex-col">
         <!-- Navbar -->
-        <nav class="bg-primary text-white p-4 shadow-lg">
+        <nav class="navbar-pattern text-white p-4 shadow-lg">
             <div class="container mx-auto flex items-center">
                 <div class="flex items-center space-x-2">
-                    <i class="fas fa-futbol text-2xl"></i>
+                    <i class="fas fa-futbol text-2xl football-icon"></i>
                     <h1 class="text-xl font-bold">Pelada Manager</h1>
                 </div>
             </div>
@@ -252,7 +343,7 @@
 
                         <!-- Import/Export Buttons -->
                         <div class="flex flex-wrap gap-2 mb-4">
-                            <button id="export-players-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                            <button id="export-players-btn" class="px-4 py-2 bg-primary hover:bg-secondary text-white font-medium rounded-lg transition-colors">
                                 <i class="fas fa-file-export mr-2"></i>Exportar Jogadores
                             </button>
                             
@@ -379,12 +470,6 @@
                                     <i class="fas fa-toggle-on mr-2"></i>Todos Disponíveis
                                 </button>
                                 <button 
-                                    id="reset-stars-btn" 
-                                    class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors"
-                                >
-                                    <i class="fas fa-star mr-2"></i>Resetar Cabeças/Perebas
-                                </button>
-                                <button 
                                     id="clear-all-btn" 
                                     class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
                                 >
@@ -505,6 +590,36 @@
                                 </div>
                             </div>
 
+                            <!-- Player selection buttons for star/weak -->
+                            <div class="flex gap-2 mt-2">
+                                <button 
+                                    type="button" 
+                                    id="select-stars-btn" 
+                                    class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors flex-1"
+                                >
+                                    <i class="fas fa-star mr-2"></i>Cabeças de Chave
+                                </button>
+                                <button 
+                                    type="button" 
+                                    id="select-weaks-btn" 
+                                    class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors flex-1"
+                                >
+                                    <i class="fas fa-arrow-down mr-2"></i>Perebas
+                                </button>
+                            </div>
+
+                            <!-- Selected player counters -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="bg-yellow-100 p-2 rounded-lg text-center">
+                                    <p class="text-yellow-800 text-sm">Cabeças de Chave:</p>
+                                    <p class="font-bold" id="stars-count">0</p>
+                                </div>
+                                <div class="bg-red-100 p-2 rounded-lg text-center">
+                                    <p class="text-red-800 text-sm">Perebas:</p>
+                                    <p class="font-bold" id="weaks-count">0</p>
+                                </div>
+                            </div>
+
                             <div class="pt-2">
                                 <button 
                                     type="button" 
@@ -578,7 +693,14 @@
                         </div>
 
                         <div id="no-draw-results" class="bg-light-secondary rounded-lg shadow-md p-8 text-center">
-                            <img src="https://i.imgur.com/lFGdtJU.png" alt="Sorteio de Times" class="w-40 h-40 mx-auto mb-4 opacity-30">
+                            <div class="football-field-bg p-4 rounded-lg shadow-inner mb-4 relative overflow-hidden opacity-40">
+                                <div class="w-full h-40 rounded-lg border-2 border-white flex items-center justify-center">
+                                    <div class="w-20 h-20 rounded-full border-2 border-white flex items-center justify-center">
+                                        <i class="fas fa-futbol text-4xl text-white"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <h3 class="text-xl font-bold mb-2">Nenhum sorteio realizado</h3>
                             <p class="text-gray-600 mb-4">
                                 Configure os parâmetros e clique em "Sortear Times" para gerar os times.
@@ -590,7 +712,7 @@
                                         <li>Cada time terá pelo menos um jogador de cada posição (ZAG, MEI, ATA), quando possível</li>
                                         <li>O nível técnico total dos times será equilibrado</li>
                                         <li>Todos os times terão o mesmo número de jogadores</li>
-                                        <li>Após o sorteio, você pode definir quem são os cabeças de chave e perebas</li>
+                                        <li>Os cabeças de chave e perebas serão equilibrados entre os times</li>
                                         <li>Restrições de jogadores serão respeitadas</li>
                                     </ul>
                                 </div>
@@ -600,6 +722,53 @@
                 </div>
             </div>
         </main>
+
+        <!-- Modals -->
+        <!-- Star Players Selection Modal -->
+        <div id="star-players-modal" class="modal-backdrop hidden">
+            <div class="modal-content">
+                <div class="modal-header bg-yellow-500 text-white">
+                    <h3 class="font-bold text-xl">Selecionar Cabeças de Chave</h3>
+                    <button id="close-star-modal" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-gray-600 mb-4">Selecione os jogadores que serão cabeças de chave neste sorteio:</p>
+                    <div id="star-players-grid" class="player-grid">
+                        <!-- Available players will be inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="confirm-stars" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-check mr-2"></i>Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weak Players Selection Modal -->
+        <div id="weak-players-modal" class="modal-backdrop hidden">
+            <div class="modal-content">
+                <div class="modal-header bg-red-500 text-white">
+                    <h3 class="font-bold text-xl">Selecionar Perebas</h3>
+                    <button id="close-weak-modal" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-gray-600 mb-4">Selecione os jogadores que serão perebas neste sorteio:</p>
+                    <div id="weak-players-grid" class="player-grid">
+                        <!-- Available players will be inserted here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="confirm-weaks" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors">
+                        <i class="fas fa-check mr-2"></i>Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Notification Toast -->
         <div id="toast" class="fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg bg-gray-800 text-white transform translate-y-full transition-transform duration-300 flex items-center z-50">
@@ -624,6 +793,8 @@
                 sortingInProgress: false,
                 namesRevealed: false,
                 playerRestrictions: [],
+                selectedStars: [],
+                selectedWeaks: [],
                 
                 // DOM Elements
                 elements: {
@@ -656,8 +827,25 @@
                     
                     // Quick action buttons
                     toggleAllBtn: document.getElementById('toggle-all-btn'),
-                    resetStarsBtn: document.getElementById('reset-stars-btn'),
                     clearAllBtn: document.getElementById('clear-all-btn'),
+                    
+                    // Player status selection buttons
+                    selectStarsBtn: document.getElementById('select-stars-btn'),
+                    selectWeaksBtn: document.getElementById('select-weaks-btn'),
+                    starsCount: document.getElementById('stars-count'),
+                    weaksCount: document.getElementById('weaks-count'),
+                    
+                    // Star Players Modal
+                    starPlayersModal: document.getElementById('star-players-modal'),
+                    starPlayersGrid: document.getElementById('star-players-grid'),
+                    closeStarModal: document.getElementById('close-star-modal'),
+                    confirmStars: document.getElementById('confirm-stars'),
+                    
+                    // Weak Players Modal
+                    weakPlayersModal: document.getElementById('weak-players-modal'),
+                    weakPlayersGrid: document.getElementById('weak-players-grid'),
+                    closeWeakModal: document.getElementById('close-weak-modal'),
+                    confirmWeaks: document.getElementById('confirm-weaks'),
                     
                     // Teams config elements
                     teamsConfigForm: document.getElementById('teams-config-form'),
@@ -711,6 +899,7 @@
                     this.setupEventListeners();
                     this.updateStats();
                     this.updateUI();
+                    this.updatePlayerStatusCounts();
                 },
                 
                 // Load data from localStorage
@@ -728,6 +917,10 @@
                     if (savedRestrictions) {
                         this.playerRestrictions = JSON.parse(savedRestrictions);
                     }
+                    
+                    // Initialize empty arrays for selectedStars and selectedWeaks
+                    this.selectedStars = [];
+                    this.selectedWeaks = [];
                 },
                 
                 // Save players to localStorage
@@ -778,14 +971,37 @@
                         this.toggleAllPlayers();
                     });
                     
-                    this.elements.resetStarsBtn.addEventListener('click', () => {
-                        this.resetStarsAndWeaks();
-                    });
-                    
                     this.elements.clearAllBtn.addEventListener('click', () => {
                         if (confirm('Tem certeza que deseja apagar todos os jogadores? Esta ação não pode ser desfeita.')) {
                             this.clearAllPlayers();
                         }
+                    });
+                    
+                    // Player status selection buttons
+                    this.elements.selectStarsBtn.addEventListener('click', () => {
+                        this.openStarPlayersModal();
+                    });
+                    
+                    this.elements.selectWeaksBtn.addEventListener('click', () => {
+                        this.openWeakPlayersModal();
+                    });
+                    
+                    // Star modal events
+                    this.elements.closeStarModal.addEventListener('click', () => {
+                        this.elements.starPlayersModal.classList.add('hidden');
+                    });
+                    
+                    this.elements.confirmStars.addEventListener('click', () => {
+                        this.confirmStarPlayers();
+                    });
+                    
+                    // Weak modal events
+                    this.elements.closeWeakModal.addEventListener('click', () => {
+                        this.elements.weakPlayersModal.classList.add('hidden');
+                    });
+                    
+                    this.elements.confirmWeaks.addEventListener('click', () => {
+                        this.confirmWeakPlayers();
                     });
                     
                     // Teams config
@@ -835,6 +1051,170 @@
                             }
                         });
                     });
+                    
+                    // Click outside modals to close
+                    window.addEventListener('click', (e) => {
+                        if (e.target === this.elements.starPlayersModal) {
+                            this.elements.starPlayersModal.classList.add('hidden');
+                        }
+                        if (e.target === this.elements.weakPlayersModal) {
+                            this.elements.weakPlayersModal.classList.add('hidden');
+                        }
+                    });
+                },
+                
+                // Open Star Players Modal
+                openStarPlayersModal() {
+                    // Get available players
+                    const availablePlayers = this.players.filter(p => p.available);
+                    
+                    if (availablePlayers.length === 0) {
+                        this.showToast('Nenhum jogador disponível para seleção!', 'error');
+                        return;
+                    }
+                    
+                    // Clear and populate grid
+                    this.elements.starPlayersGrid.innerHTML = '';
+                    
+                    // Sort players by level (descending)
+                    const sortedPlayers = [...availablePlayers].sort((a, b) => b.level - a.level);
+                    
+                    sortedPlayers.forEach(player => {
+                        const isSelected = this.selectedStars.includes(player.name);
+                        const isWeak = this.selectedWeaks.includes(player.name);
+                        const card = document.createElement('div');
+                        
+                        // If the player is already a weak, it can't be a star
+                        const disabledClass = isWeak ? 'opacity-50 cursor-not-allowed' : '';
+                        
+                        card.className = `player-card ${isSelected ? 'selected' : ''} ${disabledClass}`;
+                        card.dataset.name = player.name;
+                        
+                        // Add position color indicator
+                        let positionBg = '';
+                        if (player.position === 'ZAG') positionBg = 'bg-red-100 text-red-800';
+                        else if (player.position === 'MEI') positionBg = 'bg-green-100 text-green-800';
+                        else if (player.position === 'ATA') positionBg = 'bg-blue-100 text-blue-800';
+                        
+                        card.innerHTML = `
+                            <div class="w-8 h-8 rounded-full bg-primary mb-1 flex items-center justify-center text-white font-bold">
+                                ${player.level}
+                            </div>
+                            <div class="text-sm font-medium truncate max-w-full">${player.name}</div>
+                            <div class="text-xs ${positionBg} px-2 py-0.5 rounded mt-1">${player.position}</div>
+                        `;
+                        
+                        // Only add click event if not disabled
+                        if (!isWeak) {
+                            card.addEventListener('click', () => {
+                                // Toggle selection
+                                if (card.classList.contains('selected')) {
+                                    card.classList.remove('selected');
+                                    this.selectedStars = this.selectedStars.filter(name => name !== player.name);
+                                } else {
+                                    card.classList.add('selected');
+                                    this.selectedStars.push(player.name);
+                                }
+                            });
+                        }
+                        
+                        this.elements.starPlayersGrid.appendChild(card);
+                    });
+                    
+                    // Show modal
+                    this.elements.starPlayersModal.classList.remove('hidden');
+                },
+                
+                // Confirm selected star players
+                confirmStarPlayers() {
+                    this.updatePlayerStatusCounts();
+                    this.elements.starPlayersModal.classList.add('hidden');
+                    this.showToast(`${this.selectedStars.length} cabeças de chave selecionados!`, 'success');
+                },
+                
+                // Open Weak Players Modal
+                openWeakPlayersModal() {
+                    // Get available players
+                    const availablePlayers = this.players.filter(p => p.available);
+                    
+                    if (availablePlayers.length === 0) {
+                        this.showToast('Nenhum jogador disponível para seleção!', 'error');
+                        return;
+                    }
+                    
+                    // Clear and populate grid
+                    this.elements.weakPlayersGrid.innerHTML = '';
+                    
+                    // Sort players by level (ascending)
+                    const sortedPlayers = [...availablePlayers].sort((a, b) => a.level - b.level);
+                    
+                    sortedPlayers.forEach(player => {
+                        const isSelected = this.selectedWeaks.includes(player.name);
+                        const isStar = this.selectedStars.includes(player.name);
+                        const card = document.createElement('div');
+                        
+                        // If the player is already a star, it can't be a weak
+                        const disabledClass = isStar ? 'opacity-50 cursor-not-allowed' : '';
+                        
+                        card.className = `player-card ${isSelected ? 'selected' : ''} ${disabledClass}`;
+                        card.dataset.name = player.name;
+                        
+                        // Add position color indicator
+                        let positionBg = '';
+                        if (player.position === 'ZAG') positionBg = 'bg-red-100 text-red-800';
+                        else if (player.position === 'MEI') positionBg = 'bg-green-100 text-green-800';
+                        else if (player.position === 'ATA') positionBg = 'bg-blue-100 text-blue-800';
+                        
+                        card.innerHTML = `
+                            <div class="w-8 h-8 rounded-full bg-primary mb-1 flex items-center justify-center text-white font-bold">
+                                ${player.level}
+                            </div>
+                            <div class="text-sm font-medium truncate max-w-full">${player.name}</div>
+                            <div class="text-xs ${positionBg} px-2 py-0.5 rounded mt-1">${player.position}</div>
+                        `;
+                        
+                        // Only add click event if not disabled
+                        if (!isStar) {
+                            card.addEventListener('click', () => {
+                                // Toggle selection
+                                if (card.classList.contains('selected')) {
+                                    card.classList.remove('selected');
+                                    this.selectedWeaks = this.selectedWeaks.filter(name => name !== player.name);
+                                } else {
+                                    card.classList.add('selected');
+                                    this.selectedWeaks.push(player.name);
+                                }
+                            });
+                        }
+                        
+                        this.elements.weakPlayersGrid.appendChild(card);
+                    });
+                    
+                    // Show modal
+                    this.elements.weakPlayersModal.classList.remove('hidden');
+                },
+                
+                // Confirm selected weak players
+                confirmWeakPlayers() {
+                    this.updatePlayerStatusCounts();
+                    this.elements.weakPlayersModal.classList.add('hidden');
+                    this.showToast(`${this.selectedWeaks.length} perebas selecionados!`, 'success');
+                },
+                
+                // Update player status counts
+                updatePlayerStatusCounts() {
+                    this.elements.starsCount.textContent = this.selectedStars.length;
+                    this.elements.weaksCount.textContent = this.selectedWeaks.length;
+                },
+                
+                // Check if player is star in current draw
+                isPlayerStar(playerName) {
+                    return this.selectedStars.includes(playerName);
+                },
+                
+                // Check if player is weak in current draw
+                isPlayerWeak(playerName) {
+                    return this.selectedWeaks.includes(playerName);
                 },
                 
                 // Export players to a JSON file
@@ -914,9 +1294,7 @@
                                             name: importedPlayer.name,
                                             position: importedPlayer.position,
                                             level: importedPlayer.level,
-                                            available: true,
-                                            star: false,
-                                            weak: false
+                                            available: true
                                         };
                                         
                                         this.players.push(newPlayer);
@@ -974,23 +1352,27 @@
                             // Get old name to update restrictions if needed
                             const oldName = this.players[index].name;
                             
-                            // Preserve star and weak status when updating
-                            const star = this.players[index].star || false;
-                            const weak = this.players[index].weak || false;
-                            
                             this.players[index] = {
                                 id: parseInt(playerId),
                                 name,
                                 position,
                                 level,
-                                available,
-                                star,
-                                weak
+                                available
                             };
                             
                             // Update player in restrictions if name changed
                             if (oldName !== name) {
                                 this.updatePlayerInRestrictions(oldName, name);
+                                
+                                // Update in selectedStars and selectedWeaks if necessary
+                                if (this.selectedStars.includes(oldName)) {
+                                    this.selectedStars = this.selectedStars.filter(n => n !== oldName);
+                                    this.selectedStars.push(name);
+                                }
+                                if (this.selectedWeaks.includes(oldName)) {
+                                    this.selectedWeaks = this.selectedWeaks.filter(n => n !== oldName);
+                                    this.selectedWeaks.push(name);
+                                }
                             }
                             
                             this.showToast('Jogador atualizado com sucesso!', 'success');
@@ -1002,9 +1384,7 @@
                             name,
                             position,
                             level,
-                            available,
-                            star: false,
-                            weak: false
+                            available
                         };
                         this.players.push(newPlayer);
                         this.showToast('Jogador adicionado com sucesso!', 'success');
@@ -1020,6 +1400,7 @@
                     this.updateStats();
                     this.updatePlayerList();
                     this.updateRestrictionPlayersDropdown();
+                    this.updatePlayerStatusCounts();
                 },
                 
                 // Add a restriction between two players
@@ -1198,6 +1579,10 @@
                             );
                             this.saveRestrictions();
                             this.updateRestrictionsList();
+                            
+                            // Remove from selected stars/weaks if present
+                            this.selectedStars = this.selectedStars.filter(name => name !== playerToDelete.name);
+                            this.selectedWeaks = this.selectedWeaks.filter(name => name !== playerToDelete.name);
                         }
                         
                         this.players = this.players.filter(p => p.id !== id);
@@ -1209,6 +1594,7 @@
                         this.updateStats();
                         this.updatePlayerList();
                         this.updateRestrictionPlayersDropdown();
+                        this.updatePlayerStatusCounts();
                         
                         this.showToast('Jogador excluído com sucesso!', 'success');
                     }
@@ -1263,12 +1649,8 @@
                         else if (player.position === 'MEI') positionClass = 'bg-green-100 text-green-800';
                         else if (player.position === 'ATA') positionClass = 'bg-blue-100 text-blue-800';
                         
-                        let nameDisplay = player.name;
-                        if (player.star) nameDisplay += ' ⭐';
-                        if (player.weak) nameDisplay += ' <i class="fas fa-arrow-down text-red-600"></i>';
-                        
                         row.innerHTML = `
-                            <td class="py-3 px-4">${nameDisplay}</td>
+                            <td class="py-3 px-4">${player.name}</td>
                             <td class="py-3 px-4">
                                 <span class="px-2 py-1 rounded-full text-xs ${positionClass}">${player.position}</span>
                             </td>
@@ -1317,6 +1699,13 @@
                                 player.available = toggle.checked;
                                 this.savePlayers();
                                 this.updateStats();
+                                
+                                // If player is no longer available, remove from selected stars/weaks
+                                if (!player.available) {
+                                    this.selectedStars = this.selectedStars.filter(name => name !== player.name);
+                                    this.selectedWeaks = this.selectedWeaks.filter(name => name !== player.name);
+                                    this.updatePlayerStatusCounts();
+                                }
                             }
                         });
                     });
@@ -1374,37 +1763,18 @@
                     // Save players to localStorage
                     this.savePlayers();
                     
+                    // If setting to not available, clear selections
+                    if (allAvailable) {
+                        this.selectedStars = [];
+                        this.selectedWeaks = [];
+                        this.updatePlayerStatusCounts();
+                    }
+                    
                     // Update stats and UI
                     this.updateStats();
                     this.updatePlayerList();
                     
                     this.showToast(`Todos os jogadores estão ${allAvailable ? 'indisponíveis' : 'disponíveis'} agora!`, 'success');
-                },
-                
-                // Reset stars and weaks
-                resetStarsAndWeaks() {
-                    if (this.players.length === 0) {
-                        this.showToast('Nenhum jogador cadastrado!', 'error');
-                        return;
-                    }
-                    
-                    this.players.forEach(p => {
-                        p.star = false;
-                        p.weak = false;
-                    });
-                    
-                    // Save players to localStorage
-                    this.savePlayers();
-                    
-                    // Update stats and UI
-                    this.updatePlayerList();
-                    
-                    if (this.namesRevealed) {
-                        // If the teams are already revealed, update the display to reflect the reset status
-                        this.displayTeams(true);
-                    }
-                    
-                    this.showToast('Cabeças de Chave e Perebas resetados!', 'success');
                 },
                 
                 // Clear all players
@@ -1416,6 +1786,11 @@
                     this.playerRestrictions = [];
                     this.saveRestrictions();
                     this.updateRestrictionsList();
+                    
+                    // Clear selections
+                    this.selectedStars = [];
+                    this.selectedWeaks = [];
+                    this.updatePlayerStatusCounts();
                     
                     // Save players to localStorage
                     this.savePlayers();
@@ -1464,13 +1839,6 @@
                 
                 // Draw teams
                 drawTeams() {
-                    // Reset status of all players (remove star/weak designations)
-                    this.players.forEach(p => {
-                        p.star = false;
-                        p.weak = false;
-                    });
-                    this.savePlayers();
-                    
                     // Get available players
                     const availablePlayers = this.players.filter(p => p.available);
                     
@@ -1542,6 +1910,13 @@
                 
                 // Perform team draw algorithm
                 performTeamDraw(availablePlayers, playersPerTeam, numberOfTeams, teamNames) {
+                    // Get stars and weak players based on current selections
+                    const starPlayers = availablePlayers.filter(p => this.selectedStars.includes(p.name));
+                    const weakPlayers = availablePlayers.filter(p => this.selectedWeaks.includes(p.name));
+                    const regularPlayers = availablePlayers.filter(p => 
+                        !this.selectedStars.includes(p.name) && !this.selectedWeaks.includes(p.name)
+                    );
+                    
                     // Count available players by position
                     const positions = ['ZAG', 'MEI', 'ATA'];
                     const availableByPosition = {};
@@ -1569,11 +1944,176 @@
                             players: [],
                             totalLevel: 0,
                             index,
-                            positions: {ZAG: 0, MEI: 0, ATA: 0}
+                            positions: {ZAG: 0, MEI: 0, ATA: 0},
+                            starCount: 0,
+                            weakCount: 0
                         }));
                         
-                        // Shuffle all players - we don't separate by star/weak status since that will be done after the draw
-                        let remainingPlayers = this.shuffleArray([...availablePlayers]);
+                        // Distribute stars first, one per team if possible
+                        let availableStars = [...starPlayers];
+                        if (availableStars.length > 0) {
+                            // Shuffle stars
+                            availableStars = this.shuffleArray(availableStars);
+                            
+                            // Distribute one star per team if possible
+                            for (let i = 0; i < Math.min(teams.length, availableStars.length); i++) {
+                                teams[i].players.push(availableStars[i]);
+                                teams[i].totalLevel += availableStars[i].level;
+                                teams[i].positions[availableStars[i].position]++;
+                                teams[i].starCount++;
+                            }
+                            
+                            // Put remaining stars to the teams with lowest levels and fewer stars
+                            if (availableStars.length > teams.length) {
+                                const remainingStars = availableStars.slice(teams.length);
+                                
+                                // Sort teams by star count first, then by level
+                                teams.sort((a, b) => {
+                                    if (a.starCount !== b.starCount) {
+                                        return a.starCount - b.starCount;
+                                    } else {
+                                        return a.totalLevel - b.totalLevel;
+                                    }
+                                });
+                                
+                                remainingStars.forEach(starPlayer => {
+                                    // Find team with fewest stars and check restrictions
+                                    let targetTeam = null;
+                                    for (let i = 0; i < teams.length; i++) {
+                                        const hasRestriction = teams[i].players.some(p => 
+                                            this.playersHaveRestriction(p.name, starPlayer.name)
+                                        );
+                                        
+                                        if (!hasRestriction) {
+                                            targetTeam = teams[i];
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // If no team found without restrictions, use first team
+                                    if (!targetTeam) {
+                                        targetTeam = teams[0];
+                                    }
+                                    
+                                    // Add star to target team
+                                    targetTeam.players.push(starPlayer);
+                                    targetTeam.totalLevel += starPlayer.level;
+                                    targetTeam.positions[starPlayer.position]++;
+                                    targetTeam.starCount++;
+                                    
+                                    // Re-sort teams
+                                    teams.sort((a, b) => {
+                                        if (a.starCount !== b.starCount) {
+                                            return a.starCount - b.starCount;
+                                        } else {
+                                            return a.totalLevel - b.totalLevel;
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                        
+                        // Distribute weaks second, one per team if possible
+                        let availableWeaks = [...weakPlayers];
+                        if (availableWeaks.length > 0) {
+                            // Shuffle weaks
+                            availableWeaks = this.shuffleArray(availableWeaks);
+                            
+                            // Sort teams by level (descending)
+                            teams.sort((a, b) => b.totalLevel - a.totalLevel);
+                            
+                            // Distribute one weak per team if possible
+                            for (let i = 0; i < Math.min(teams.length, availableWeaks.length); i++) {
+                                const weakPlayer = availableWeaks[i];
+                                
+                                // Check restrictions
+                                const hasRestriction = teams[i].players.some(p => 
+                                    this.playersHaveRestriction(p.name, weakPlayer.name)
+                                );
+                                
+                                if (hasRestriction) {
+                                    // Find another team without restrictions
+                                    const teamsWithoutRestrictions = teams.filter(team => 
+                                        !team.players.some(p => this.playersHaveRestriction(p.name, weakPlayer.name))
+                                    );
+                                    
+                                    if (teamsWithoutRestrictions.length > 0) {
+                                        // Get team with highest level among those without restrictions
+                                        const alternateTeam = teamsWithoutRestrictions.reduce((prev, curr) => 
+                                            prev.totalLevel > curr.totalLevel ? prev : curr
+                                        );
+                                        
+                                        alternateTeam.players.push(weakPlayer);
+                                        alternateTeam.totalLevel += weakPlayer.level;
+                                        alternateTeam.positions[weakPlayer.position]++;
+                                        alternateTeam.weakCount++;
+                                    } else {
+                                        // If all teams have restrictions, still add to highest level team
+                                        teams[i].players.push(weakPlayer);
+                                        teams[i].totalLevel += weakPlayer.level;
+                                        teams[i].positions[weakPlayer.position]++;
+                                        teams[i].weakCount++;
+                                    }
+                                } else {
+                                    teams[i].players.push(weakPlayer);
+                                    teams[i].totalLevel += weakPlayer.level;
+                                    teams[i].positions[weakPlayer.position]++;
+                                    teams[i].weakCount++;
+                                }
+                            }
+                            
+                            // Sort teams by level and weak count for remaining weaks
+                            if (availableWeaks.length > teams.length) {
+                                const remainingWeaks = availableWeaks.slice(teams.length);
+                                
+                                // Sort teams by weak count first, then by level (highest level first)
+                                teams.sort((a, b) => {
+                                    if (a.weakCount !== b.weakCount) {
+                                        return a.weakCount - b.weakCount;
+                                    } else {
+                                        return b.totalLevel - a.totalLevel;
+                                    }
+                                });
+                                
+                                remainingWeaks.forEach(weakPlayer => {
+                                    // Find team with fewest weaks and check restrictions
+                                    let targetTeam = null;
+                                    for (let i = 0; i < teams.length; i++) {
+                                        const hasRestriction = teams[i].players.some(p => 
+                                            this.playersHaveRestriction(p.name, weakPlayer.name)
+                                        );
+                                        
+                                        if (!hasRestriction) {
+                                            targetTeam = teams[i];
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // If no team found without restrictions, use first team
+                                    if (!targetTeam) {
+                                        targetTeam = teams[0];
+                                    }
+                                    
+                                    // Add weak to target team
+                                    targetTeam.players.push(weakPlayer);
+                                    targetTeam.totalLevel += weakPlayer.level;
+                                    targetTeam.positions[weakPlayer.position]++;
+                                    targetTeam.weakCount++;
+                                    
+                                    // Re-sort teams
+                                    teams.sort((a, b) => {
+                                        if (a.weakCount !== b.weakCount) {
+                                            return a.weakCount - b.weakCount;
+                                        } else {
+                                            return b.totalLevel - a.totalLevel;
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                        
+                        // Shuffle regular players
+                        let remainingPlayers = [...regularPlayers];
                         
                         // PRIMEIRO PASSO: Distribuir jogadores por posição se houver suficientes
                         for (const position of positions) {
@@ -1686,10 +2226,26 @@
                                                 donorTeam.totalLevel -= playerToTransfer.level;
                                                 donorTeam.positions[position]--;
                                                 
+                                                // Atualizar contagem de star/weak se aplicável
+                                                if (this.selectedStars.includes(playerToTransfer.name)) {
+                                                    donorTeam.starCount--;
+                                                }
+                                                if (this.selectedWeaks.includes(playerToTransfer.name)) {
+                                                    donorTeam.weakCount--;
+                                                }
+                                                
                                                 // Adicione ao time receptor
                                                 teamWithoutPosition.players.push(playerToTransfer);
                                                 teamWithoutPosition.totalLevel += playerToTransfer.level;
                                                 teamWithoutPosition.positions[position]++;
+                                                
+                                                // Atualizar contagem de star/weak se aplicável
+                                                if (this.selectedStars.includes(playerToTransfer.name)) {
+                                                    teamWithoutPosition.starCount++;
+                                                }
+                                                if (this.selectedWeaks.includes(playerToTransfer.name)) {
+                                                    teamWithoutPosition.weakCount++;
+                                                }
                                             }
                                         }
                                     }
@@ -1708,7 +2264,13 @@
                                 
                                 // Atualizar contagem de posições
                                 team.positions = {ZAG: 0, MEI: 0, ATA: 0};
-                                team.players.forEach(p => team.positions[p.position]++);
+                                team.starCount = 0;
+                                team.weakCount = 0;
+                                team.players.forEach(p => {
+                                    team.positions[p.position]++;
+                                    if (this.selectedStars.includes(p.name)) team.starCount++;
+                                    if (this.selectedWeaks.includes(p.name)) team.weakCount++;
+                                });
                                 
                                 // Devolver jogadores excedentes para redistribuição
                                 excessPlayers.forEach(p => remainingPlayers.push(p));
@@ -1818,8 +2380,12 @@
                         const varianceOfAvgs = avgPerPlayer.reduce((sum, avg) => sum + Math.pow(avg - avgOfAvgs, 2), 0) / teams.length;
                         const stdDevOfAvgs = Math.sqrt(varianceOfAvgs);
                         
+                        // Calcular pontuação de distribuição de star/weak
+                        const starWeakBalance = this.calculateStarWeakBalance(teams);
+                        
                         // Pontuação combinada - dando maior peso ao equilíbrio de nível
-                        const combinedScore = balanceScore * 0.5 + positionBalanceScore * 0.3 + restrictionScore * 0.2;
+                        const combinedScore = balanceScore * 0.5 + positionBalanceScore * 0.25 + 
+                                             restrictionScore * 0.15 + starWeakBalance * 0.1;
                         
                         // Se for a melhor pontuação até agora ou tiver o menor desvio-padrão
                         if (combinedScore > bestTry.balanceScore || 
@@ -1832,7 +2398,8 @@
                                 balanceScore: combinedScore,
                                 positionBalanceScore,
                                 restrictionScore,
-                                levelDeviation: stdDevOfAvgs
+                                levelDeviation: stdDevOfAvgs,
+                                starWeakBalance
                             };
                             
                             // Se alcançamos uma pontuação muito boa, podemos parar antes
@@ -1847,6 +2414,30 @@
                     this.elements.progressText.textContent = 'Sorteio concluído!';
                     
                     return bestTry;
+                },
+                
+                // Calcular equilíbrio de distribuição de cabeças/perebas
+                calculateStarWeakBalance(teams) {
+                    if (teams.length <= 1) return 1; // Perfeito para um time
+                    
+                    // Verificar distribuição de cabeças de chave
+                    const starCounts = teams.map(team => team.starCount);
+                    const minStars = Math.min(...starCounts);
+                    const maxStars = Math.max(...starCounts);
+                    const starDiff = maxStars - minStars;
+                    
+                    // Verificar distribuição de perebas
+                    const weakCounts = teams.map(team => team.weakCount);
+                    const minWeaks = Math.min(...weakCounts);
+                    const maxWeaks = Math.max(...weakCounts);
+                    const weakDiff = maxWeaks - minWeaks;
+                    
+                    // Perfeitamente equilibrado = diferença de 0 ou 1 (inevitável se números ímpares)
+                    const starBalance = starDiff <= 1 ? 1 : 1 - (starDiff - 1) / (this.selectedStars.length || 1);
+                    const weakBalance = weakDiff <= 1 ? 1 : 1 - (weakDiff - 1) / (this.selectedWeaks.length || 1);
+                    
+                    // Média dos dois equilíbrios
+                    return (starBalance + weakBalance) / 2;
                 },
                 
                 // Tenta trocar jogadores entre times para melhorar o equilíbrio
@@ -1913,6 +2504,24 @@
                                             targetTeam.positions[targetPlayer.position]--;
                                             targetTeam.positions[playerToMove.position]++;
                                             
+                                            // Atualizar contagem de star/weak se aplicável
+                                            if (this.selectedStars.includes(playerToMove.name)) {
+                                                sourceTeam.starCount--;
+                                                targetTeam.starCount++;
+                                            }
+                                            if (this.selectedStars.includes(targetPlayer.name)) {
+                                                sourceTeam.starCount++;
+                                                targetTeam.starCount--;
+                                            }
+                                            if (this.selectedWeaks.includes(playerToMove.name)) {
+                                                sourceTeam.weakCount--;
+                                                targetTeam.weakCount++;
+                                            }
+                                            if (this.selectedWeaks.includes(targetPlayer.name)) {
+                                                sourceTeam.weakCount++;
+                                                targetTeam.weakCount--;
+                                            }
+                                            
                                             return true; // Troca realizada
                                         }
                                     }
@@ -1978,6 +2587,24 @@
                                         targetTeam.positions[targetPlayer.position]--;
                                         targetTeam.positions[sourcePlayer.position]++;
                                         
+                                        // Atualizar contagem de star/weak se aplicável
+                                        if (this.selectedStars.includes(sourcePlayer.name)) {
+                                            sourceTeam.starCount--;
+                                            targetTeam.starCount++;
+                                        }
+                                        if (this.selectedStars.includes(targetPlayer.name)) {
+                                            sourceTeam.starCount++;
+                                            targetTeam.starCount--;
+                                        }
+                                        if (this.selectedWeaks.includes(sourcePlayer.name)) {
+                                            sourceTeam.weakCount--;
+                                            targetTeam.weakCount++;
+                                        }
+                                        if (this.selectedWeaks.includes(targetPlayer.name)) {
+                                            sourceTeam.weakCount++;
+                                            targetTeam.weakCount--;
+                                        }
+                                        
                                         return true; // Troca realizada
                                     }
                                 }
@@ -2003,6 +2630,11 @@
                         team.players.push(player);
                         team.totalLevel += player.level;
                         team.positions[player.position]++;
+                        
+                        // Atualizar contagem de star/weak se aplicável
+                        if (this.selectedStars.includes(player.name)) team.starCount++;
+                        if (this.selectedWeaks.includes(player.name)) team.weakCount++;
+                        
                         return;
                     }
                     
@@ -2031,6 +2663,11 @@
                                 team.players.push(player);
                                 team.totalLevel += player.level;
                                 team.positions[player.position]++;
+                                
+                                // Atualizar contagem de star/weak se aplicável
+                                if (this.selectedStars.includes(player.name)) team.starCount++;
+                                if (this.selectedWeaks.includes(player.name)) team.weakCount++;
+                                
                                 return;
                             }
                         }
@@ -2046,6 +2683,10 @@
                     team.players.push(player);
                     team.totalLevel += player.level;
                     team.positions[player.position]++;
+                    
+                    // Atualizar contagem de star/weak se aplicável
+                    if (this.selectedStars.includes(player.name)) team.starCount++;
+                    if (this.selectedWeaks.includes(player.name)) team.weakCount++;
                 },
                 
                 // Encontra o jogador que deixa a média do time mais próxima do alvo
@@ -2071,35 +2712,6 @@
                     }
                     
                     return bestPlayer;
-                },
-                
-                // Set player status (star/weak)
-                setPlayerStatus(playerName, status) {
-                    const player = this.players.find(p => p.name === playerName);
-                    if (player) {
-                        if (status === 'star') {
-                            player.star = true;
-                            player.weak = false;
-                        } else if (status === 'weak') {
-                            player.star = false;
-                            player.weak = true;
-                        } else {
-                            player.star = false;
-                            player.weak = false;
-                        }
-                        this.savePlayers();
-                    }
-                },
-                
-                // Handle status change from UI
-                handleStatusChange(event, playerName) {
-                    const status = event.target.value;
-                    this.setPlayerStatus(playerName, status);
-                    
-                    // If the teams are already revealed, update the display
-                    if (this.namesRevealed) {
-                        this.displayTeams(true);
-                    }
                 },
                 
                 // Display teams in the UI
@@ -2144,14 +2756,11 @@
                         else if (index === 2) headerColor = 'bg-green-500 text-white';
                         else if (index === 3) headerColor = 'bg-yellow-500 text-white';
                         
-                        let teamHeader = `
+                        teamCard.innerHTML = `
                             <div class="p-4 ${headerColor} flex justify-between items-center">
                                 <h3 class="text-lg font-bold">${team.name}</h3>
                                 ${isStarting ? '<span class="bg-white text-green-600 px-2 py-1 rounded text-xs font-bold">Começa Jogando</span>' : ''}
                             </div>
-                        `;
-                        
-                        let teamStats = `
                             <div class="p-4">
                                 <div class="grid grid-cols-3 gap-3 mb-4">
                                     <div class="bg-gray-100 p-2 rounded text-center">
@@ -2167,75 +2776,56 @@
                                         <p class="text-xl font-bold">${avgLevel}</p>
                                     </div>
                                 </div>
+                                
+                                <div class="space-y-3">
+                                    ${positions.map(pos => {
+                                        const posPlayers = team.players.filter(p => p.position === pos);
+                                        
+                                        let positionClass = '';
+                                        if (pos === 'ZAG') positionClass = 'bg-red-100 text-red-800';
+                                        else if (pos === 'MEI') positionClass = 'bg-green-100 text-green-800';
+                                        else if (pos === 'ATA') positionClass = 'bg-blue-100 text-blue-800';
+                                        
+                                        return `
+                                            <div>
+                                                <h4 class="text-sm font-medium mb-2">
+                                                    <span class="inline-block px-2 py-1 rounded-full text-xs ${positionClass}">${pos}</span>
+                                                    <span class="text-gray-500">(${posPlayers.length})</span>
+                                                </h4>
+                                                <ul class="space-y-2">
+                                                    ${posPlayers.map(player => {
+                                                        let playerDisplay = '';
+                                                        
+                                                        if (showNames) {
+                                                            let nameDisplay = player.name;
+                                                            const isStar = this.isPlayerStar(player.name);
+                                                            const isWeak = this.isPlayerWeak(player.name);
+                                                            
+                                                            playerDisplay = `
+                                                                <span class="font-medium">${nameDisplay}</span>
+                                                                <span class="text-gray-500 ml-2">(${player.level})</span>
+                                                                ${isStar ? '<span class="text-yellow-500 ml-1">⭐</span>' : ''}
+                                                                ${isWeak ? '<i class="fas fa-arrow-down text-red-600 ml-1"></i>' : ''}
+                                                            `;
+                                                        } else {
+                                                            playerDisplay = `
+                                                                <span class="font-medium bg-gray-200 px-3 py-1 rounded-lg animate-pulse-slow">
+                                                                    Jogador
+                                                                </span>
+                                                                <span class="text-gray-500 ml-2">(${player.level})</span>
+                                                            `;
+                                                        }
+                                                        
+                                                        return `<li class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm">${playerDisplay}</li>`;
+                                                    }).join('')}
+                                                </ul>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
                         `;
                         
-                        let positionsHTML = '';
-                        
-                        positions.forEach(pos => {
-                            const posPlayers = team.players.filter(p => p.position === pos);
-                            
-                            let positionClass = '';
-                            if (pos === 'ZAG') positionClass = 'bg-red-100 text-red-800';
-                            else if (pos === 'MEI') positionClass = 'bg-green-100 text-green-800';
-                            else if (pos === 'ATA') positionClass = 'bg-blue-100 text-blue-800';
-                            
-                            positionsHTML += `
-                                <div>
-                                    <h4 class="text-sm font-medium mb-2">
-                                        <span class="inline-block px-2 py-1 rounded-full text-xs ${positionClass}">${pos}</span>
-                                        <span class="text-gray-500">(${posPlayers.length})</span>
-                                    </h4>
-                                    <ul class="space-y-2">
-                            `;
-                            
-                            posPlayers.forEach(player => {
-                                // Get the current player from the main players array to get updated star/weak status
-                                const currentPlayer = this.players.find(p => p.name === player.name);
-                                const isStar = currentPlayer ? currentPlayer.star : false;
-                                const isWeak = currentPlayer ? currentPlayer.weak : false;
-                                
-                                if (showNames) {
-                                    let nameDisplay = player.name;
-                                    
-                                    // If showing names, add a dropdown for selecting player status
-                                    positionsHTML += `
-                                        <li class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
-                                            <div>
-                                                <span class="font-medium">${nameDisplay}</span>
-                                                <span class="text-gray-500 ml-2">(${player.level})</span>
-                                                ${isStar ? '<span class="text-yellow-500 ml-1">⭐</span>' : ''}
-                                                ${isWeak ? '<i class="fas fa-arrow-down text-red-600 ml-1"></i>' : ''}
-                                            </div>
-                                            <select 
-                                                class="player-status-select ml-2" 
-                                                data-player="${player.name}"
-                                                onchange="app.handleStatusChange(event, '${player.name}')"
-                                            >
-                                                <option value="none" ${!isStar && !isWeak ? 'selected' : ''}>Normal</option>
-                                                <option value="star" ${isStar ? 'selected' : ''}>⭐ Cabeça</option>
-                                                <option value="weak" ${isWeak ? 'selected' : ''}>↓ Pereba</option>
-                                            </select>
-                                        </li>
-                                    `;
-                                } else {
-                                    positionsHTML += `
-                                        <li class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                                            <span class="font-medium bg-gray-200 px-3 py-1 rounded-lg animate-pulse-slow">
-                                                Jogador
-                                            </span>
-                                            <span class="text-gray-500 ml-2">(${player.level})</span>
-                                        </li>
-                                    `;
-                                }
-                            });
-                            
-                            positionsHTML += `
-                                    </ul>
-                                </div>
-                            `;
-                        });
-                        
-                        teamCard.innerHTML = teamHeader + teamStats + `<div class="space-y-3">${positionsHTML}</div></div>`;
                         this.elements.teamsContainer.appendChild(teamCard);
                     });
                     
@@ -2287,10 +2877,9 @@
                                 
                                 // Display names with status indicators
                                 const playerNames = posPlayers.map(player => {
-                                    const currentPlayer = this.players.find(p => p.name === player.name);
                                     let name = player.name;
-                                    if (currentPlayer && currentPlayer.star) name += " ★";
-                                    if (currentPlayer && currentPlayer.weak) name += " ↓";
+                                    if (this.isPlayerStar(player.name)) name += " ★";
+                                    if (this.isPlayerWeak(player.name)) name += " ↓";
                                     return name;
                                 });
                                 
@@ -2343,8 +2932,8 @@
                             
                             sortedPlayers.forEach(p => {
                                 let name = p.name;
-                                if (p.star) name += ' ★';
-                                if (p.weak) name += ' ↓';
+                                if (this.isPlayerStar(p.name)) name += ' ★';
+                                if (this.isPlayerWeak(p.name)) name += ' ↓';
                                 
                                 message += `   ${name} (${p.level})`;
                                 message += p.available ? ' ✓' : ' ✗';
